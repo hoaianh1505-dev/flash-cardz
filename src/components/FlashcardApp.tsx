@@ -99,6 +99,7 @@ const GUEST_CARDS_KEY = 'flashcardx_guest_cards_v1';
 const GUEST_DAILY_KEY = 'flashcardx_guest_daily_v1';
 const GUEST_SESSIONS_KEY = 'flashcardx_guest_sessions_v1';
 const GUEST_GOAL_KEY = 'flashcardx_guest_goal_v1';
+const PREFS_KEY = 'flashcardx_prefs_v1';
 
 function shuffleArray<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -190,6 +191,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [prefsReady, setPrefsReady] = useState(false);
 
   // Modals (Add/Edit card & JSON Backup/Restore)
   const [activeModal, setActiveModal] = useState<null | 'edit' | 'data'>(null);
@@ -306,10 +308,45 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     setTheme(savedTheme);
 
     try {
-      setAutoSpeak(localStorage.getItem('toeic_flashcards_autospeak') === '1');
+      const rawPrefs = localStorage.getItem(PREFS_KEY);
+      if (rawPrefs) {
+        const p = JSON.parse(rawPrefs) as Partial<{
+          autoSpeak: boolean;
+          reverseMode: boolean;
+          activeTab: MainTab;
+          practiceMode: PracticeSubTab;
+          mode: 'all' | 'unlearned' | 'learned' | 'starred';
+          typeFilter: 'all' | PosKey;
+          libLimit: 25 | 50 | 100;
+          quizDir: 'en-vi' | 'vi-en';
+          quizSize: 10 | 20 | 30;
+          quizPoolMode: 'unlearned' | 'all' | 'learned';
+        }>;
+        if (typeof p.autoSpeak === 'boolean') setAutoSpeak(p.autoSpeak);
+        if (typeof p.reverseMode === 'boolean') setReverseMode(p.reverseMode);
+        if (p.activeTab && ['study', 'practice', 'library', 'irregular', 'stats'].includes(p.activeTab)) {
+          setActiveTab(p.activeTab);
+        }
+        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz') {
+          setPracticeMode(p.practiceMode);
+        }
+        if (p.mode && ['all', 'unlearned', 'learned', 'starred'].includes(p.mode)) {
+          setMode(p.mode);
+        }
+        if (p.typeFilter) setTypeFilter(p.typeFilter);
+        if (p.libLimit === 25 || p.libLimit === 50 || p.libLimit === 100) setLibLimit(p.libLimit);
+        if (p.quizDir === 'en-vi' || p.quizDir === 'vi-en') setQuizDir(p.quizDir);
+        if (p.quizSize === 10 || p.quizSize === 20 || p.quizSize === 30) setQuizSize(p.quizSize);
+        if (p.quizPoolMode && ['unlearned', 'all', 'learned'].includes(p.quizPoolMode)) {
+          setQuizPoolMode(p.quizPoolMode);
+        }
+      } else {
+        setAutoSpeak(localStorage.getItem('toeic_flashcards_autospeak') === '1');
+      }
     } catch {
       /* ignore */
     }
+    setPrefsReady(true);
 
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const pickVoice = () => {
@@ -739,14 +776,23 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     async (value: boolean) => {
       if (!currentCard) return;
       const id = currentCard.id;
+      const willRemoveFromView =
+        (mode === 'unlearned' && value) || (mode === 'learned' && !value);
+      const nextWordAfterMark = willRemoveFromView
+        ? view[safeIndex + 1]?.word || view[0]?.word
+        : undefined;
+
       setFlipped(false);
       stopSpeech();
-      if ((mode === 'unlearned' && value) || (mode === 'learned' && !value)) {
+      if (willRemoveFromView) {
         setShuffledIds((prev) => prev.filter((x) => x !== id));
       }
       await setCardLearnedById(id, value);
+      if (autoSpeak && nextWordAfterMark && nextWordAfterMark !== currentCard.word) {
+        speak(nextWordAfterMark, false);
+      }
     },
-    [currentCard, mode, stopSpeech, setCardLearnedById]
+    [currentCard, mode, view, safeIndex, stopSpeech, setCardLearnedById, autoSpeak, speak]
   );
 
   const markManyUnlearned = useCallback(
@@ -855,6 +901,43 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
       /* ignore */
     }
   };
+
+  // Auto-persist all user UI preferences to localStorage whenever they change
+  useEffect(() => {
+    if (!prefsReady) return;
+    try {
+      localStorage.setItem('toeic_flashcards_autospeak', autoSpeak ? '1' : '0');
+      localStorage.setItem(
+        PREFS_KEY,
+        JSON.stringify({
+          autoSpeak,
+          reverseMode,
+          activeTab,
+          practiceMode,
+          mode,
+          typeFilter,
+          libLimit,
+          quizDir,
+          quizSize,
+          quizPoolMode,
+        })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [
+    prefsReady,
+    autoSpeak,
+    reverseMode,
+    activeTab,
+    practiceMode,
+    mode,
+    typeFilter,
+    libLimit,
+    quizDir,
+    quizSize,
+    quizPoolMode,
+  ]);
 
   const toggleTheme = useCallback(() => {
     const next = theme === 'dark' ? 'light' : 'dark';
