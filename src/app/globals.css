@@ -4115,3 +4115,276 @@ kbd {
     padding: 16px 14px 44px;
   }
 }
+
+
+/* ===== Refinements: Compact Sidebar, Wider Workspace, Sticky Library + Pagination, Aligned Edit Modal, Upgraded Toast ===== */
+.appSidebar {
+  width: 216px;
+  padding: 14px 10px 14px;
+  gap: 12px;
+}
+
+.appMain {
+  margin-left: 216px;
+}
+
+.appContent {
+  padding: 18px 22px 28px;
+}
+
+.innerPageWrap {
+  max-width: 100%;
+}
+
+.studyCleanWrap {
+  max-width: 1080px;
+}
+
+/* Sticky Viewport Panel for Vocabulary Library (Header + Filter + Pagination stay pinned!) */
+.libViewportPanel {
+  height: calc(100vh - 62px - 36px);
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.libStickyTop {
+  flex: none;
+  padding: 14px 20px 12px;
+  background: var(--card-bg);
+  border-bottom: 1.5px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.libTopRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.libResultSummary {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--teal-deep);
+  background: var(--teal-bg);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.compactChips {
+  margin: 0;
+}
+
+.compactAz {
+  margin: 0;
+  gap: 4px;
+}
+
+.compactAz button {
+  min-width: 31px;
+  height: 31px;
+  font-size: 13.5px;
+  border-radius: 8px;
+}
+
+.compactAz button.active {
+  background: var(--teal);
+  color: #fff;
+  border-color: var(--teal);
+}
+
+.libScrollBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px;
+}
+
+.libListGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.libPaginationBar {
+  flex: none;
+  padding: 10px 20px;
+  background: var(--sidebar-bg);
+  border-top: 1.5px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.libPageInfo {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.libPageInfo b {
+  color: var(--ink);
+}
+
+.libPageControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.smallSelect {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* Spacious & Pixel-Aligned Add / Edit Flashcard Modal */
+.box.editBox {
+  max-width: 600px;
+  padding: 32px 34px;
+  border-radius: 22px;
+}
+
+.editModalTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.editModalSub {
+  margin: 6px 0 22px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.editFormStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.editField label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.editFieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.editField input {
+  width: 100%;
+  margin: 0;
+  padding: 12px 15px;
+  border-radius: 11px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  font-size: 15.5px;
+}
+
+.meaningStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meaningRowFlat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meaningRowFlat input {
+  flex: 1;
+}
+
+.editModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.editModalFooter button {
+  padding: 11px 22px;
+  font-size: 15px;
+  border-radius: 11px;
+}
+
+/* Upgraded Larger & Cleaner Top-Right Toast */
+.toast {
+  top: 20px;
+  right: 22px;
+  min-width: 280px;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 5px solid var(--teal);
+  box-shadow: 0 14px 34px rgba(18, 22, 24, 0.24);
+}
+
+.toast.toast-success {
+  border-left-color: #8ee0c6;
+}
+
+.toast.toast-error {
+  border-left-color: #f6b3a5;
+}
+
+.toastIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.toastText {
+  line-height: 1.4;
+}
+
+@media (max-width: 860px) {
+  .appMain {
+    margin-left: 0;
+  }
+  .libViewportPanel {
+    height: auto;
+    min-height: calc(100vh - 96px);
+  }
+  .libScrollBody {
+    max-height: 62vh;
+  }
+  .box.editBox {
+    padding: 24px 20px;
+  }
+}

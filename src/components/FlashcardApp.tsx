@@ -202,10 +202,27 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const wordInputRef = useRef<HTMLInputElement | null>(null);
   const meaningInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Vocabulary Library tab filters
+  // Vocabulary Library tab filters + server-side pagination
   const [libStatus, setLibStatus] = useState<'all' | 'unlearned' | 'learned' | 'starred'>('all');
   const [libPos, setLibPos] = useState<'all' | PosKey>('all');
+  const [libLetter, setLibLetter] = useState<string>('all');
   const [libSearch, setLibSearch] = useState('');
+  const [libSearchDebounced, setLibSearchDebounced] = useState('');
+  const [libPage, setLibPage] = useState(1);
+  const [libLimit, setLibLimit] = useState<25 | 50 | 100>(50);
+  const [libLoading, setLibLoading] = useState(false);
+  const [libRefreshTick, setLibRefreshTick] = useState(0);
+  const [libRemote, setLibRemote] = useState<{
+    items: CardItem[];
+    total: number;
+    page: number;
+    totalPages: number;
+    statusBaseLen: number;
+    statusCounts: { all: number; unlearned: number; learned: number; starred: number };
+    posCounts: Record<string, number>;
+    letterCounts: Record<string, number>;
+  } | null>(null);
+  const libScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Practice Quiz state
   const [quizPoolMode, setQuizPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
@@ -660,6 +677,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         if (res.ok) {
           const data = await res.json();
           if (data.daily) setDaily(data.daily);
+          if (activeTab === 'library') setLibRefreshTick((t) => t + 1);
         }
       } catch {
         showToast('Lỗi đồng bộ tiến độ lên máy chủ', 'error');
@@ -685,6 +703,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ starred: nextVal }),
         });
+        if (activeTab === 'library') setLibRefreshTick((t) => t + 1);
       } catch {
         showToast('Lỗi lưu gắn sao lên máy chủ', 'error');
       }
@@ -1000,6 +1019,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           return;
         }
         setCards((prev) => prev.map((c) => (c.id === editingId ? data.card : c)));
+        setLibRefreshTick((t) => t + 1);
         setActiveModal(null);
         showToast('Đã cập nhật flashcard', 'success');
       } else {
@@ -1033,6 +1053,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           setCurrentIndex(0);
           showToast(`Đã thêm: ${capFirst(data.card.word)}`, 'success');
         }
+        setLibRefreshTick((t) => t + 1);
 
         if (keepOpen) {
           setWordInput('');
@@ -1065,6 +1086,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     if (isGuest) return;
     try {
       await fetch(`/api/cards/${card.id}`, { method: 'DELETE' });
+      setLibRefreshTick((t) => t + 1);
     } catch {
       showToast('Lỗi xoá thẻ trên máy chủ', 'error');
     }
@@ -1371,8 +1393,63 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     toggleAutoSpeak,
   ]);
 
-  // Unified Vocabulary Library data
-  const libData = useMemo(() => {
+  // Debounce Library search input
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLibSearchDebounced(libSearch);
+      setLibPage(1);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [libSearch]);
+
+  // Server-side filtered & paginated Library fetch (for logged-in accounts)
+  useEffect(() => {
+    if (activeTab !== 'library' || isGuest) return;
+    let cancelled = false;
+    setLibLoading(true);
+    const params = new URLSearchParams({
+      status: libStatus,
+      pos: libPos,
+      letter: libLetter,
+      q: libSearchDebounced,
+      page: String(libPage),
+      limit: String(libLimit),
+    });
+    fetch(`/api/cards/list?${params.toString()}`, { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('HTTP error'))))
+      .then((data) => {
+        if (!cancelled) {
+          setLibRemote(data);
+          libScrollRef.current?.scrollTo({ top: 0 });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Không thể tải danh sách từ vựng', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLibLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeTab,
+    isGuest,
+    libStatus,
+    libPos,
+    libLetter,
+    libSearchDebounced,
+    libPage,
+    libLimit,
+    libRefreshTick,
+    showToast,
+  ]);
+
+  // Unified Vocabulary Library data (API for logged-in, local paginated mirror for Guest)
+  const libView = useMemo(() => {
+    if (!isGuest && libRemote) {
+      return libRemote;
+    }
     const statusBase = cards.filter((c) =>
       libStatus === 'all'
         ? true
@@ -1385,22 +1462,57 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     const posCounts: Record<string, number> = {};
     statusBase.forEach((c) => detectPOS(c).forEach((t) => (posCounts[t] = (posCounts[t] || 0) + 1)));
 
-    const q = keyOf(libSearch);
-    const arr = statusBase.filter(
+    const q = keyOf(libSearchDebounced);
+    const posSearchFiltered = statusBase.filter(
       (c) =>
         (libPos === 'all' || detectPOS(c).includes(libPos)) &&
         (!q || keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q)))
     );
-    arr.sort((a, b) => sortKey(a.word).localeCompare(sortKey(b.word), 'en'));
 
-    const letters: Record<string, number> = {};
-    arr.forEach((c) => {
+    const letterCounts: Record<string, number> = {};
+    posSearchFiltered.forEach((c) => {
       const L = firstLetter(c.word);
-      letters[L] = (letters[L] || 0) + 1;
+      letterCounts[L] = (letterCounts[L] || 0) + 1;
     });
 
-    return { statusBaseLen: statusBase.length, posCounts, arr, letters };
-  }, [cards, libStatus, libPos, libSearch]);
+    const finalList =
+      libLetter !== 'all'
+        ? posSearchFiltered.filter((c) => firstLetter(c.word) === libLetter)
+        : posSearchFiltered;
+    finalList.sort((a, b) => sortKey(a.word).localeCompare(sortKey(b.word), 'en'));
+
+    const total = finalList.length;
+    const totalPages = Math.max(1, Math.ceil(total / libLimit));
+    const safePage = Math.min(libPage, totalPages);
+    const start = (safePage - 1) * libLimit;
+
+    return {
+      items: finalList.slice(start, start + libLimit),
+      total,
+      page: safePage,
+      totalPages,
+      statusBaseLen: statusBase.length,
+      statusCounts: {
+        all: stats.total,
+        unlearned: stats.remain,
+        learned: stats.learned,
+        starred: stats.starred,
+      },
+      posCounts,
+      letterCounts,
+    };
+  }, [
+    isGuest,
+    libRemote,
+    cards,
+    libStatus,
+    libPos,
+    libLetter,
+    libSearchDebounced,
+    libPage,
+    libLimit,
+    stats,
+  ]);
 
   // Analytics computed metrics
   const analytics = useMemo(() => {
@@ -2280,57 +2392,56 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
             </div>
           )}
 
-          {/* ==================== TAB 3: DANH SÁCH TỪ ==================== */}
+          {/* ==================== TAB 3: DANH SÁCH TỪ (STICKY FILTER + API PAGINATION) ==================== */}
           {activeTab === 'library' && (
-            <div className="innerPageWrap">
-              <section className="pagePanel">
-                <div className="pagePanelHead">
-                  <div>
-                    <h2 className="pageTitle">Danh sách từ vựng</h2>
-                    <p className="pageSub">
-                      Hiển thị <b>{libData.arr.length}</b> / {stats.total} từ · Bấm vào từ bất kỳ để
-                      mở thẻ học.
-                    </p>
-                  </div>
-                  <button type="button" className="primary btnIconText" onClick={openAdd}>
-                    <IconPlus size={16} />
-                    <span>Thêm từ mới</span>
-                  </button>
-                </div>
-
-                <div className="libFilterRow">
+            <section className="libViewportPanel">
+              {/* Pinned Top Filter Header — NEVER scrolls away */}
+              <div className="libStickyTop">
+                <div className="libTopRow">
                   <div className="segGroup">
                     <button
                       type="button"
                       className={`segBtn ${libStatus === 'all' ? 'active' : ''}`}
-                      onClick={() => setLibStatus('all')}
+                      onClick={() => {
+                        setLibStatus('all');
+                        setLibPage(1);
+                      }}
                     >
-                      Tất cả ({stats.total})
+                      Tất cả ({libView.statusCounts.all})
                     </button>
                     <button
                       type="button"
                       className={`segBtn ${libStatus === 'unlearned' ? 'active' : ''}`}
-                      onClick={() => setLibStatus('unlearned')}
+                      onClick={() => {
+                        setLibStatus('unlearned');
+                        setLibPage(1);
+                      }}
                     >
-                      Chưa thuộc ({stats.remain})
+                      Chưa thuộc ({libView.statusCounts.unlearned})
                     </button>
                     <button
                       type="button"
                       className={`segBtn ${libStatus === 'learned' ? 'active' : ''}`}
-                      onClick={() => setLibStatus('learned')}
+                      onClick={() => {
+                        setLibStatus('learned');
+                        setLibPage(1);
+                      }}
                     >
-                      Đã thuộc ({stats.learned})
+                      Đã thuộc ({libView.statusCounts.learned})
                     </button>
                     <button
                       type="button"
                       className={`segBtn ${libStatus === 'starred' ? 'active' : ''}`}
-                      onClick={() => setLibStatus('starred')}
+                      onClick={() => {
+                        setLibStatus('starred');
+                        setLibPage(1);
+                      }}
                     >
-                      Gắn sao ({stats.starred})
+                      Gắn sao ({libView.statusCounts.starred})
                     </button>
                   </div>
 
-                  <div className="searchFieldWrap" style={{ flex: 1, minWidth: 220 }}>
+                  <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
                     <IconSearch size={16} className="searchFieldIcon" />
                     <input
                       value={libSearch}
@@ -2338,25 +2449,36 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                       placeholder="Tìm từ tiếng Anh hoặc nghĩa tiếng Việt..."
                     />
                   </div>
+
+                  <span className="libResultSummary">
+                    {libLoading ? 'Đang lọc...' : `${libView.total} từ phù hợp`}
+                  </span>
                 </div>
 
-                <div className="catChips">
+                {/* POS Filter Chips */}
+                <div className="catChips compactChips">
                   <button
                     type="button"
                     className={`chip ${libPos === 'all' ? 'active' : ''}`}
-                    onClick={() => setLibPos('all')}
+                    onClick={() => {
+                      setLibPos('all');
+                      setLibPage(1);
+                    }}
                   >
-                    Tất cả từ loại <span className="chipN">{libData.statusBaseLen}</span>
+                    Tất cả từ loại <span className="chipN">{libView.statusBaseLen}</span>
                   </button>
                   {POS_LIST.map(([k, label]) => {
-                    const n = libData.posCounts[k] || 0;
+                    const n = libView.posCounts[k] || 0;
                     if (!n && libPos !== k) return null;
                     return (
                       <button
                         key={k}
                         type="button"
                         className={`chip ${libPos === k ? 'active' : ''}`}
-                        onClick={() => setLibPos(k)}
+                        onClick={() => {
+                          setLibPos(k);
+                          setLibPage(1);
+                        }}
                       >
                         {label} <span className="chipN">{n}</span>
                       </button>
@@ -2364,121 +2486,166 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                   })}
                 </div>
 
-                <div className="azBar">
+                {/* A-Z Filter Bar (calls API filter instead of manual DOM jump) */}
+                <div className="azBar compactAz">
+                  <button
+                    type="button"
+                    className={libLetter === 'all' ? 'active' : ''}
+                    onClick={() => {
+                      setLibLetter('all');
+                      setLibPage(1);
+                    }}
+                    style={{ width: 'auto', padding: '0 10px' }}
+                  >
+                    Tất cả
+                  </button>
                   {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
                     <button
                       key={L}
                       type="button"
-                      className={libData.letters[L] ? '' : 'off'}
-                      onClick={() => jumpLetter('lib', L)}
+                      className={`${libLetter === L ? 'active' : ''} ${
+                        libView.letterCounts[L] ? '' : 'off'
+                      }`}
+                      onClick={() => {
+                        setLibLetter((cur) => (cur === L ? 'all' : L));
+                        setLibPage(1);
+                      }}
                     >
                       {L}
                     </button>
                   ))}
                 </div>
+              </div>
 
-                <div className="libList">
-                  {libData.arr.length === 0 ? (
-                    <div className="empty">Không có từ vựng nào khớp với bộ lọc hiện tại.</div>
-                  ) : (
-                    (() => {
-                      let curL = '';
-                      return libData.arr.map((c) => {
-                        const L = firstLetter(c.word);
-                        const showH = L !== curL;
-                        if (showH) curL = L;
-                        const posTags = detectPOS(c).filter((t) => t !== 'other');
-                        return (
-                          <div key={c.id} className="libItemGroup">
-                            {showH && (
-                              <div
-                                className="letterHead"
-                                id={`lib-${L === '#' ? '0' : L}`}
-                                style={{ marginBottom: 8, marginTop: 6 }}
-                              >
-                                <span>{L}</span>
-                                <small>{libData.letters[L]} từ</small>
-                              </div>
-                            )}
-                            <div className={`item libItem ${c.learned ? 'learned' : ''}`}>
-                              <div
-                                className="itemInfo"
-                                onClick={() => jumpToCard(c.id)}
-                                title="Bấm để mở thẻ này"
-                              >
-                                <div className="libWordLine">
-                                  <b className="itemWord">{capFirst(c.word)}</b>
-                                  {posTags.map((t) => (
-                                    <span key={t} className="libPosPill">
-                                      {POS_SHORT[t]}
-                                    </span>
-                                  ))}
-                                  {c.meanings[0]?.phonetic && (
-                                    <span className="libPhonetic">{c.meanings[0].phonetic}</span>
-                                  )}
-                                </div>
-                                <span className="itemMeaning">
-                                  {c.meanings.map((m) => capFirst(m.text)).join('; ')}
+              {/* Scrollable Paginated List Body */}
+              <div ref={libScrollRef} className="libScrollBody">
+                {libLoading && libView.items.length === 0 ? (
+                  <div className="empty">Đang tải danh sách từ vựng...</div>
+                ) : libView.items.length === 0 ? (
+                  <div className="empty">Không có từ vựng nào khớp với bộ lọc hiện tại.</div>
+                ) : (
+                  <div className="libListGrid">
+                    {libView.items.map((c) => {
+                      const posTags = detectPOS(c).filter((t) => t !== 'other');
+                      return (
+                        <div key={c.id} className={`item libItem ${c.learned ? 'learned' : ''}`}>
+                          <div
+                            className="itemInfo"
+                            onClick={() => jumpToCard(c.id)}
+                            title="Bấm để mở thẻ này trong mục Học thẻ"
+                          >
+                            <div className="libWordLine">
+                              <b className="itemWord">{capFirst(c.word)}</b>
+                              {posTags.map((t) => (
+                                <span key={t} className="libPosPill">
+                                  {POS_SHORT[t]}
                                 </span>
-                                {c.note && <span className="libNoteLine">Ghi chú: {c.note}</span>}
-                              </div>
-
-                              <div className="libItemActions">
-                                <button
-                                  type="button"
-                                  className="spkBig"
-                                  onClick={() => speak(c.word, false)}
-                                  title="Phát âm to rõ"
-                                >
-                                  <IconVolume size={16} />
-                                  <span>Nghe</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`iconActionBtn ${c.starred ? 'starBtnOn' : 'ghost'}`}
-                                  onClick={() => toggleStarById(c)}
-                                  title="Gắn sao"
-                                  aria-label="Gắn sao"
-                                >
-                                  <IconStar size={16} filled={!!c.starred} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`iconActionBtn ${c.learned ? 'success' : 'soft'}`}
-                                  onClick={() => setCardLearnedById(c.id, !c.learned)}
-                                  title={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
-                                  aria-label="Đổi trạng thái thuộc"
-                                >
-                                  {c.learned ? <IconCheck size={16} /> : <IconX size={16} />}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="iconActionBtn soft"
-                                  onClick={() => openEdit(c)}
-                                  title="Sửa từ này"
-                                  aria-label="Sửa từ này"
-                                >
-                                  <IconEdit size={15} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="iconActionBtn danger"
-                                  onClick={() => deleteCard(c)}
-                                  title="Xoá từ này"
-                                  aria-label="Xoá từ này"
-                                >
-                                  <IconTrash size={15} />
-                                </button>
-                              </div>
+                              ))}
+                              {c.meanings[0]?.phonetic && (
+                                <span className="libPhonetic">{c.meanings[0].phonetic}</span>
+                              )}
                             </div>
+                            <span className="itemMeaning">
+                              {c.meanings.map((m) => capFirst(m.text)).join('; ')}
+                            </span>
+                            {c.note && <span className="libNoteLine">Ghi chú: {c.note}</span>}
                           </div>
-                        );
-                      });
-                    })()
-                  )}
+
+                          <div className="libItemActions">
+                            <button
+                              type="button"
+                              className="spkBig"
+                              onClick={() => speak(c.word, false)}
+                              title="Phát âm to rõ"
+                            >
+                              <IconVolume size={16} />
+                              <span>Nghe</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`iconActionBtn ${c.starred ? 'starBtnOn' : 'ghost'}`}
+                              onClick={() => toggleStarById(c)}
+                              title="Gắn sao"
+                              aria-label="Gắn sao"
+                            >
+                              <IconStar size={16} filled={!!c.starred} />
+                            </button>
+                            <button
+                              type="button"
+                              className={`iconActionBtn ${c.learned ? 'success' : 'soft'}`}
+                              onClick={() => setCardLearnedById(c.id, !c.learned)}
+                              title={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
+                              aria-label="Đổi trạng thái thuộc"
+                            >
+                              {c.learned ? <IconCheck size={16} /> : <IconX size={16} />}
+                            </button>
+                            <button
+                              type="button"
+                              className="iconActionBtn soft"
+                              onClick={() => openEdit(c)}
+                              title="Sửa từ này"
+                              aria-label="Sửa từ này"
+                            >
+                              <IconEdit size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="iconActionBtn danger"
+                              onClick={() => deleteCard(c)}
+                              title="Xoá từ này"
+                              aria-label="Xoá từ này"
+                            >
+                              <IconTrash size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Pinned Bottom Pagination Bar */}
+              <div className="libPaginationBar">
+                <div className="libPageInfo">
+                  Trang <b>{libView.page}</b> / {libView.totalPages} · Hiển thị{' '}
+                  <b>{libView.items.length}</b> / {libView.total} từ
                 </div>
-              </section>
-            </div>
+
+                <div className="libPageControls">
+                  <select
+                    className="posSelect smallSelect"
+                    value={libLimit}
+                    onChange={(e) => {
+                      setLibLimit(Number(e.target.value) as 25 | 50 | 100);
+                      setLibPage(1);
+                    }}
+                    aria-label="Số từ mỗi trang"
+                  >
+                    <option value={25}>25 từ / trang</option>
+                    <option value={50}>50 từ / trang</option>
+                    <option value={100}>100 từ / trang</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    className="ghost small"
+                    disabled={libView.page <= 1}
+                    onClick={() => setLibPage((p) => Math.max(1, p - 1))}
+                  >
+                    ← Trước
+                  </button>
+                  <button
+                    type="button"
+                    className="primary small"
+                    disabled={libView.page >= libView.totalPages}
+                    onClick={() => setLibPage((p) => Math.min(libView.totalPages, p + 1))}
+                  >
+                    Tiếp →
+                  </button>
+                </div>
+              </div>
+            </section>
           )}
 
           {/* ==================== TAB 4: BẤT QUY TẮC ==================== */}
@@ -2625,10 +2792,10 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         </main>
       </div>
 
-      {/* ==================== MODAL: ADD / EDIT FLASHCARD ==================== */}
+      {/* ==================== MODAL: ADD / EDIT FLASHCARD (SPACIOUS & ALIGNED) ==================== */}
       {activeModal === 'edit' && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
-          <div className="box">
+          <div className="box editBox">
             <button
               type="button"
               className="closeX"
@@ -2637,92 +2804,115 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
             >
               <IconX size={20} />
             </button>
-            <h2>{editingId ? 'Sửa flashcard' : 'Thêm flashcard mới'}</h2>
+            <h2 className="editModalTitle">
+              {editingId ? 'Sửa flashcard' : 'Thêm flashcard mới'}
+            </h2>
+            <p className="editModalSub">
+              Nhập từ tiếng Anh và nghĩa tiếng Việt. Nếu từ đã tồn tại, hệ thống sẽ tự gộp nghĩa mới.
+            </p>
 
-            <label>
-              Từ / cụm từ tiếng Anh
-              <input
-                ref={wordInputRef}
-                value={wordInput}
-                onChange={(e) => setWordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    meaningInputRefs.current[0]?.focus();
-                  }
-                }}
-                placeholder="Ví dụ: precise"
-                autoComplete="off"
-              />
-            </label>
-
-            {meaningInputs.map((val, idx) => (
-              <div key={idx} className="meaningRow">
+            <div className="editFormStack">
+              <div className="editField">
+                <label htmlFor="edit-word">Từ / cụm từ tiếng Anh</label>
                 <input
-                  ref={(el) => {
-                    meaningInputRefs.current[idx] = el;
-                  }}
-                  value={val}
-                  onChange={(e) => {
-                    const copy = [...meaningInputs];
-                    copy[idx] = e.target.value;
-                    setMeaningInputs(copy);
-                  }}
+                  id="edit-word"
+                  ref={wordInputRef}
+                  value={wordInput}
+                  onChange={(e) => setWordInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      saveCard(!editingId);
+                      meaningInputRefs.current[0]?.focus();
                     }
                   }}
-                  placeholder="Nghĩa tiếng Việt, ví dụ: chính xác"
+                  placeholder="Ví dụ: precise"
                   autoComplete="off"
                 />
-                {meaningInputs.length > 1 && (
+              </div>
+
+              <div className="editField">
+                <div className="editFieldHead">
+                  <label htmlFor="edit-meaning-0">Nghĩa tiếng Việt</label>
                   <button
                     type="button"
-                    className="rowRemove"
-                    onClick={() => setMeaningInputs((prev) => prev.filter((_, i) => i !== idx))}
-                    title="Bỏ nghĩa này"
-                    aria-label="Bỏ nghĩa này"
+                    className="ghost small btnIconText"
+                    onClick={() => setMeaningInputs((prev) => [...prev, ''])}
                   >
-                    <IconX size={14} />
+                    <IconPlus size={14} />
+                    <span>Thêm nghĩa</span>
                   </button>
-                )}
+                </div>
+                <div className="meaningStack">
+                  {meaningInputs.map((val, idx) => (
+                    <div key={idx} className="meaningRowFlat">
+                      <input
+                        id={`edit-meaning-${idx}`}
+                        ref={(el) => {
+                          meaningInputRefs.current[idx] = el;
+                        }}
+                        value={val}
+                        onChange={(e) => {
+                          const copy = [...meaningInputs];
+                          copy[idx] = e.target.value;
+                          setMeaningInputs(copy);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveCard(!editingId);
+                          }
+                        }}
+                        placeholder={
+                          idx === 0
+                            ? 'Nghĩa tiếng Việt, ví dụ: chính xác'
+                            : `Nghĩa bổ sung #${idx + 1}...`
+                        }
+                        autoComplete="off"
+                      />
+                      {meaningInputs.length > 1 && (
+                        <button
+                          type="button"
+                          className="rowRemove"
+                          onClick={() =>
+                            setMeaningInputs((prev) => prev.filter((_, i) => i !== idx))
+                          }
+                          title="Bỏ nghĩa này"
+                          aria-label="Bỏ nghĩa này"
+                        >
+                          <IconX size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
 
-            <label style={{ marginTop: 10 }}>
-              Ghi chú / câu ví dụ (tuỳ chọn)
-              <input
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                placeholder="Ví dụ: We need a precise measurement."
-                maxLength={400}
-              />
-            </label>
+              <div className="editField">
+                <label htmlFor="edit-note">
+                  Ghi chú / câu ví dụ <span className="authOpt">(tuỳ chọn)</span>
+                </label>
+                <input
+                  id="edit-note"
+                  value={noteInput}
+                  onChange={(e) => setNoteInput(e.target.value)}
+                  placeholder="Ví dụ: We need a precise measurement."
+                  maxLength={400}
+                />
+              </div>
+            </div>
 
-            <div className="formBtns" style={{ justifyContent: 'space-between' }}>
+            <div className="editModalFooter">
+              <button type="button" className="soft" onClick={() => setActiveModal(null)}>
+                Huỷ
+              </button>
               <button
                 type="button"
-                className="ghost small btnIconText"
-                onClick={() => setMeaningInputs((prev) => [...prev, ''])}
+                className="primary"
+                disabled={savingCard}
+                onClick={() => saveCard(false)}
               >
-                <IconPlus size={14} />
-                <span>Thêm nghĩa</span>
+                {savingCard ? 'Đang lưu...' : editingId ? 'Lưu thay đổi' : 'Lưu flashcard'}
               </button>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="soft" onClick={() => setActiveModal(null)}>
-                  Huỷ
-                </button>
-                <button
-                  type="button"
-                  className="primary"
-                  disabled={savingCard}
-                  onClick={() => saveCard(false)}
-                >
-                  {savingCard ? 'Đang lưu...' : 'Lưu'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -2785,7 +2975,16 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         aria-live="polite"
         className={`toast toast-${toast.type} ${toastVisible ? 'show' : ''}`}
       >
-        {toast.msg}
+        <span className="toastIcon">
+          {toast.type === 'success' ? (
+            <IconCheck size={17} />
+          ) : toast.type === 'error' ? (
+            <IconX size={17} />
+          ) : (
+            <IconBook size={16} />
+          )}
+        </span>
+        <span className="toastText">{toast.msg}</span>
       </div>
     </div>
   );
