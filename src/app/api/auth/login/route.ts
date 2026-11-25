@@ -53,6 +53,14 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     console.error('Login error:', err);
-    return NextResponse.json({ error: 'Đăng nhập thất bại, vui lòng thử lại.' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Đăng nhập thất bại, vui lòng thử lại.',
+        ...(process.env.NODE_ENV !== 'production' && {
+          detail: err instanceof Error ? err.message : String(err),
+        }),
+      },
+      { status: 500 }
+    );
   }
 }

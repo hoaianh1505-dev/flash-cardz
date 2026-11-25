@@ -9,8 +9,6 @@ if (process.platform === 'win32') {
   }
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
 interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
@@ -25,6 +23,7 @@ const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: nul
 global.mongooseCache = cached;
 
 export async function connectDB(): Promise<typeof mongoose> {
+  const MONGODB_URI = process.env.MONGODB_URI;
   if (!MONGODB_URI) {
     throw new Error('Missing MONGODB_URI environment variable');
   }

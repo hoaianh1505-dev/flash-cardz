@@ -1,5 +1,20 @@
 import type { Metadata } from 'next';
+import { Be_Vietnam_Pro, Bricolage_Grotesque } from 'next/font/google';
 import './globals.css';
+
+const fontDisplay = Bricolage_Grotesque({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['600', '700'],
+  variable: '--font-display-loaded',
+  display: 'swap',
+});
+
+const fontBody = Be_Vietnam_Pro({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body-loaded',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Flashcard TOEIC — FlashcardX',
@@ -12,7 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html
+      lang="vi"
+      className={`${fontDisplay.variable} ${fontBody.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
