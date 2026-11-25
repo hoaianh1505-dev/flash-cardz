@@ -21,43 +21,39 @@ export default function Toast({
   durationMs = 2600,
   onClose,
 }: ToastProps) {
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const startXRef = useRef<number | null>(null);
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length !== 1) return;
-    startRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!visible) return;
+    startXRef.current = e.clientX;
     setDragging(true);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!startRef.current || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - startRef.current.x;
-    const dy = e.touches[0].clientY - startRef.current.y;
-    // Allow swiping right (dx > 0) or swiping up (dy < 0)
-    setDragOffset({
-      x: dx > 0 ? dx : 0,
-      y: dy < 0 ? dy : 0,
-    });
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (startXRef.current === null) return;
+    const dx = e.clientX - startXRef.current;
+    setDragX(dx > 0 ? dx : 0);
   };
 
-  const handleTouchEnd = () => {
-    if (!startRef.current) return;
-    const shouldDismiss = dragOffset.x > 64 || dragOffset.y < -36;
-    startRef.current = null;
+  const handlePointerEnd = () => {
+    if (startXRef.current === null) return;
+    const shouldDismiss = dragX > 70;
+    startXRef.current = null;
     setDragging(false);
-    setDragOffset({ x: 0, y: 0 });
+    setDragX(0);
     if (shouldDismiss) {
       onClose();
     }
   };
 
   const dragStyle =
-    dragging && (dragOffset.x !== 0 || dragOffset.y !== 0)
+    dragging && dragX > 0
       ? {
-          transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
-          opacity: Math.max(0.25, 1 - Math.max(dragOffset.x / 180, -dragOffset.y / 90)),
+          transform: `translateX(${dragX}px)`,
+          opacity: Math.max(0.2, 1 - dragX / 220),
           transition: 'none',
         }
       : undefined;
@@ -68,50 +64,39 @@ export default function Toast({
       aria-live="polite"
       className={`toast toast-${type} ${visible ? 'show' : ''}`}
       style={dragStyle}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      title="Kéo sang phải để tắt thông báo"
     >
       <span className={`toastBadge toastBadge-${type}`} aria-hidden="true">
         {type === 'success' && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
         {type === 'error' && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="7" x2="12" y2="13" />
-            <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
           </svg>
         )}
         {type === 'warning' && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="8" x2="12" y2="13" />
-            <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="17" r="1.2" fill="currentColor" stroke="none" />
           </svg>
         )}
         {type === 'info' && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="7.5" r="1" fill="currentColor" stroke="none" />
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
             <line x1="12" y1="11.5" x2="12" y2="17" />
           </svg>
         )}
       </span>
 
       <span className="toastText">{msg}</span>
-
-      <button
-        type="button"
-        className="toastClose"
-        onClick={onClose}
-        aria-label="Đóng thông báo"
-        title="Đóng thông báo"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
 
       {visible && (
         <span

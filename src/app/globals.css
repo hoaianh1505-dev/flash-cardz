@@ -5076,3 +5076,35 @@ body {
     height: 36px;
   }
 }
+
+
+/* Larger drag-right-to-dismiss Toast (no X button, hidden on mobile phones <= 640px) */
+.toast {
+  min-width: 360px;
+  max-width: min(480px, calc(100vw - 36px));
+  padding: 18px 24px 23px 20px;
+  border-radius: 12px;
+  font-size: 16.5px;
+  gap: 15px;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.toast:active {
+  cursor: grabbing;
+}
+
+.toastBadge {
+  width: 32px;
+  height: 32px;
+}
+
+.toastProgress {
+  height: 5px;
+}
+
+@media (max-width: 640px) {
+  .toast {
+    display: none !important;
+  }
+}
