@@ -4537,3 +4537,400 @@ kbd {
     transform: scaleX(0);
   }
 }
+
+
+/* ===== Full Responsive Design: Mobile Bottom Nav + Tablet & Phone Breakpoints ===== */
+.mobileBottomNav {
+  display: none;
+}
+
+/* Tablet (<= 1024px) */
+@media (max-width: 1024px) {
+  .appSidebar {
+    width: 204px;
+  }
+  .appMain {
+    margin-left: 204px;
+  }
+  .appHeader {
+    padding: 0 16px;
+  }
+  .appContent {
+    padding: 16px 16px 32px;
+  }
+  .headerSearchWrap {
+    max-width: 220px;
+  }
+  .studyFilterBar {
+    gap: 10px;
+  }
+  .practiceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .practiceModeSwitch {
+    width: 100%;
+  }
+  .practiceModeBtn {
+    flex: 1 1 220px;
+  }
+}
+
+/* Mobile & Small Tablet (<= 860px) */
+@media (max-width: 860px) {
+  .appSidebar {
+    width: 268px;
+    padding: 18px 14px;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: var(--shadow);
+  }
+  .appSidebar.open {
+    transform: translateX(0);
+  }
+  .appMain {
+    margin-left: 0;
+  }
+  .appHeader {
+    height: 56px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .appHeaderTitle {
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .appHeaderRight {
+    gap: 6px;
+  }
+  .appHeaderRight .ghost.small span {
+    display: none;
+  }
+  .appContent {
+    padding: 14px 12px calc(82px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Show 1-thumb mobile bottom navigation bar */
+  .mobileBottomNav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 38;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: var(--sidebar-bg);
+    border-top: 1.5px solid var(--line-soft);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 16px rgba(18, 22, 24, 0.08);
+  }
+  .mobileNavBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 2px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .mobileNavBtn.active {
+    color: var(--teal);
+    background: var(--teal-bg);
+  }
+
+  /* Study tab on mobile */
+  .studyFilterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .studyFilterBar .segGroup {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .studyFilterBar .segGroup::-webkit-scrollbar {
+    display: none;
+  }
+  .studyFilterBar .segBtn {
+    flex: 0 0 auto;
+  }
+  .studyFilterRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .studyFilterRight .posSelect {
+    flex: 1;
+    min-width: 0;
+  }
+  .centerTopBar {
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .centerTopActions {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .studioCard {
+    margin: 12px 0 14px;
+  }
+  .studioInner,
+  .studioFace {
+    min-height: 290px;
+  }
+  .studioFace {
+    padding: 32px 18px 24px;
+    border-radius: 18px;
+  }
+  .studioWord {
+    font-size: clamp(30px, 8vw, 44px);
+  }
+  .meaningItem {
+    font-size: 18px;
+    padding: 12px 14px;
+  }
+  .triControls {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .triControls button {
+    padding: 12px 10px;
+    font-size: 14px;
+  }
+  .keyTag,
+  .keyTagSolid {
+    display: none;
+  }
+  .kbdHint {
+    display: none;
+  }
+  .noteEditorBar {
+    flex-wrap: wrap;
+  }
+  .noteEditorBar input {
+    flex: 1 1 100%;
+  }
+
+  /* Library tab on mobile */
+  .libViewportPanel {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .libStickyTop {
+    position: sticky;
+    top: 56px;
+    z-index: 20;
+    padding: 12px;
+    gap: 8px;
+  }
+  .libTopRow {
+    gap: 8px;
+  }
+  .libTopRow .segGroup {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .libTopRow .segBtn {
+    flex: 0 0 auto;
+    font-size: 12.5px;
+    padding: 6px 10px;
+  }
+  .libResultSummary {
+    display: none;
+  }
+  .compactChips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .compactChips::-webkit-scrollbar {
+    display: none;
+  }
+  .compactAz {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .compactAz::-webkit-scrollbar {
+    display: none;
+  }
+  .compactAz button {
+    flex: none;
+  }
+  .libScrollBody {
+    max-height: none;
+    overflow: visible;
+    padding: 12px;
+  }
+  .libItem {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    gap: 10px;
+  }
+  .itemWord {
+    font-size: 20px;
+  }
+  .itemMeaning {
+    font-size: 16px;
+  }
+  .libItemActions {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-soft);
+  }
+  .libPaginationBar {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .libPageInfo {
+    text-align: center;
+    font-size: 13px;
+  }
+  .libPageControls {
+    justify-content: space-between;
+  }
+
+  /* Practice (Dictation + Quiz) on mobile */
+  .dictToolbar {
+    padding: 12px;
+    gap: 10px;
+  }
+  .dictToolbarGroup {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .dictStageCard {
+    padding: 20px 14px 22px;
+    border-radius: 16px;
+  }
+  .dictSpeakerOrb {
+    width: 72px;
+    height: 72px;
+  }
+  .dictMaskLine {
+    font-size: 19px;
+    letter-spacing: 1.5px;
+  }
+  .dictInput {
+    font-size: 18px;
+    padding: 12px 14px;
+  }
+  .dictActionRow {
+    flex-direction: column;
+  }
+  .dictActionRow button {
+    width: 100%;
+    min-width: 0;
+  }
+  .quizGridOptions {
+    grid-template-columns: 1fr;
+  }
+  .quizGridOpt {
+    padding: 13px 14px;
+    font-size: 15px;
+  }
+
+  /* Irregular Verbs table on mobile */
+  .pagePanel {
+    padding: 16px 12px;
+    border-radius: 16px;
+  }
+  .pageTitle {
+    font-size: 20px;
+  }
+  .pageIrrWrap {
+    max-height: 62vh;
+  }
+  .irrTable {
+    font-size: 15px;
+  }
+  .irrTable th {
+    font-size: 12.5px;
+    padding: 10px 8px;
+  }
+  .irrTable td {
+    padding: 10px 8px;
+  }
+  .irrTable td.vi {
+    font-size: 13.5px;
+  }
+  .irrTable td.spkCell {
+    width: 42px;
+    padding: 6px;
+  }
+  .spkBtn {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Modals & Toast on mobile */
+  .modal {
+    padding: 16px 10px;
+    align-items: center;
+  }
+  .box,
+  .box.editBox {
+    padding: 22px 18px;
+    border-radius: 18px;
+  }
+  .editModalTitle {
+    font-size: 21px;
+  }
+  .editModalFooter {
+    margin-top: 18px;
+  }
+  .editModalFooter button {
+    flex: 1;
+    padding: 11px 14px;
+  }
+  .toast {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    min-width: 0;
+    max-width: none;
+    padding: 13px 38px 16px 14px;
+    font-size: 14px;
+  }
+}
+
+/* Small phones (<= 480px) */
+@media (max-width: 480px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+  .appHeaderRight .primary.small span {
+    display: none;
+  }
+  .authPage {
+    padding: 14px 10px;
+  }
+  .authHero {
+    padding: 22px 18px;
+  }
+  .authPanel {
+    padding: 22px 18px;
+  }
+  .authPanelHead h2 {
+    font-size: 24px;
+  }
+  .practiceModeBtn {
+    padding: 10px 12px;
+  }
+}

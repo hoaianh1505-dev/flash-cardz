@@ -2971,6 +2971,50 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         </div>
       )}
 
+      {/* Mobile Bottom Tab Bar (visible on <= 860px for 1-thumb navigation) */}
+      <nav className="mobileBottomNav" aria-label="Điều hướng di động">
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'study' ? 'active' : ''}`}
+          onClick={() => switchTab('study')}
+        >
+          <IconBook size={19} />
+          <span>Học thẻ</span>
+        </button>
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'practice' ? 'active' : ''}`}
+          onClick={() => switchTab('practice')}
+        >
+          <IconHeadphones size={19} />
+          <span>Luyện tập</span>
+        </button>
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'library' ? 'active' : ''}`}
+          onClick={() => switchTab('library')}
+        >
+          <IconList size={19} />
+          <span>Từ vựng</span>
+        </button>
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'irregular' ? 'active' : ''}`}
+          onClick={() => switchTab('irregular')}
+        >
+          <IconLayers size={19} />
+          <span>Bất quy tắc</span>
+        </button>
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'stats' ? 'active' : ''}`}
+          onClick={() => switchTab('stats')}
+        >
+          <IconBarChart size={19} />
+          <span>Thống kê</span>
+        </button>
+      </nav>
+
       {/* Top-right Toast */}
       <Toast
         id={toast.id}
