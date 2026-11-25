@@ -5,6 +5,7 @@ import defaultToeic from '@/data/default-toeic.json';
 import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/pos';
 import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
+import Toast, { ToastType } from './Toast';
 import {
   IconBarChart,
   IconBook,
@@ -235,7 +236,8 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const importFileRef = useRef<HTMLInputElement | null>(null);
 
   // Top-right Toast
-  const [toast, setToast] = useState<{ msg: string; type: 'info' | 'success' | 'error' }>({
+  const [toast, setToast] = useState<{ id: number; msg: string; type: ToastType }>({
+    id: 0,
     msg: '',
     type: 'info',
   });
@@ -254,11 +256,11 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const suppressFlipRef = useRef(false);
   const flashcardRef = useRef<HTMLDivElement | null>(null);
 
-  const showToast = useCallback((msg: string, type: 'info' | 'success' | 'error' = 'info') => {
-    setToast({ msg, type });
+  const showToast = useCallback((msg: string, type: ToastType = 'info') => {
+    setToast({ id: Date.now(), msg, type });
     setToastVisible(true);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToastVisible(false), 2400);
+    toastTimerRef.current = setTimeout(() => setToastVisible(false), 2600);
   }, []);
 
   // Persist Guest data to localStorage
@@ -2970,22 +2972,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
       )}
 
       {/* Top-right Toast */}
-      <div
-        role="status"
-        aria-live="polite"
-        className={`toast toast-${toast.type} ${toastVisible ? 'show' : ''}`}
-      >
-        <span className="toastIcon">
-          {toast.type === 'success' ? (
-            <IconCheck size={17} />
-          ) : toast.type === 'error' ? (
-            <IconX size={17} />
-          ) : (
-            <IconBook size={16} />
-          )}
-        </span>
-        <span className="toastText">{toast.msg}</span>
-      </div>
+      <Toast
+        id={toast.id}
+        msg={toast.msg}
+        type={toast.type}
+        visible={toastVisible}
+        durationMs={2600}
+        onClose={() => setToastVisible(false)}
+      />
     </div>
   );
 }

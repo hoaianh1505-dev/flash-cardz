@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Toast, { ToastType } from './Toast';
 
 interface AuthScreenProps {
   onGuestEnter?: () => void;
@@ -20,7 +21,8 @@ export default function AuthScreen({ onGuestEnter }: AuthScreenProps) {
   const [previewFlipped, setPreviewFlipped] = useState(false);
 
   // Top-right toast
-  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' | 'info' }>({
+  const [toast, setToast] = useState<{ id: number; msg: string; type: ToastType }>({
+    id: 0,
     msg: '',
     type: 'info',
   });
@@ -34,8 +36,8 @@ export default function AuthScreen({ onGuestEnter }: AuthScreenProps) {
 
   const isRegister = tab === 'register';
 
-  const showToast = useCallback((msg: string, type: 'error' | 'success' | 'info' = 'error') => {
-    setToast({ msg, type });
+  const showToast = useCallback((msg: string, type: ToastType = 'error') => {
+    setToast({ id: Date.now(), msg, type });
     setToastVisible(true);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToastVisible(false), 3200);
@@ -410,26 +412,14 @@ export default function AuthScreen({ onGuestEnter }: AuthScreenProps) {
         </section>
       </div>
 
-      <div
-        role="status"
-        aria-live="polite"
-        className={`toast toast-${toast.type} ${toastVisible ? 'show' : ''}`}
-      >
-        <span className="toastIcon">
-          {toast.type === 'success' ? (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          ) : (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          )}
-        </span>
-        <span className="toastText">{toast.msg}</span>
-      </div>
+      <Toast
+        id={toast.id}
+        msg={toast.msg}
+        type={toast.type}
+        visible={toastVisible}
+        durationMs={3200}
+        onClose={() => setToastVisible(false)}
+      />
     </main>
   );
 }
