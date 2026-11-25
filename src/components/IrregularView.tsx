@@ -3,12 +3,11 @@
 import { useMemo, useState } from 'react';
 import irregularVerbs from '@/data/irregular-verbs.json';
 import { keyOf } from '@/lib/pos';
-import { IconBook, IconEyeOff, IconGauge, IconSearch, IconVolume, IconX } from './Icons';
+import { IconEyeOff, IconSearch, IconVolume } from './Icons';
 
 type IrrRow = [string, string, string, string];
 const IRR_ALL = irregularVerbs as IrrRow[];
 
-// 100 động từ bất quy tắc thông dụng nhất cho TOEIC & giao tiếp hàng ngày
 const TOP_100_SET = new Set([
   'arise', 'awake', 'be', 'bear', 'beat', 'become', 'begin', 'bend', 'bet', 'bid',
   'bind', 'bite', 'bleed', 'blow', 'break', 'bring', 'broadcast', 'build', 'burn', 'burst',
@@ -40,16 +39,13 @@ function firstLetter(w: string): string {
 }
 
 interface Props {
-  onClose: () => void;
   onSpeak: (text: string, slow?: boolean) => void;
-  onToast: (msg: string) => void;
 }
 
-export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
+export default function IrregularView({ onSpeak }: Props) {
   const [scope, setScope] = useState<'top100' | 'all360'>('top100');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'AAA' | 'ABA' | 'ABB' | 'ABC'>('all');
-  const [slow, setSlow] = useState(false);
   const [hide, setHide] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
@@ -97,54 +93,52 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
       setRevealed((prev) => ({ ...prev, [`${rowIdx}-${colIdx}`]: true }));
     }
     if (colIdx !== 3) {
-      onSpeak(row[colIdx], slow);
+      onSpeak(row[colIdx], false);
     }
   }
 
   let currentLetter = '';
 
   return (
-    <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="box wide">
-        <button type="button" className="closeX" onClick={onClose} aria-label="Đóng">
-          <IconX size={20} />
-        </button>
-
-        <div className="modalTitleRow">
-          <h2 className="titleWithIcon">
-            <IconBook size={22} />
-            <span>Động từ bất quy tắc</span>
-          </h2>
-
-          <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={scope === 'top100'}
-              className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
-              onClick={() => {
-                setScope('top100');
-                setRevealed({});
-              }}
-            >
-              100 từ thông dụng
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={scope === 'all360'}
-              className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
-              onClick={() => {
-                setScope('all360');
-                setRevealed({});
-              }}
-            >
-              Đầy đủ {IRR_ALL.length} từ
-            </button>
-          </div>
+    <section className="pagePanel">
+      <div className="pagePanelHead">
+        <div>
+          <h1 className="pageTitle">Bảng động từ bất quy tắc</h1>
+          <p className="pageSub">
+            Bấm vào bất kỳ ô V1 / V2 / V3 nào để nghe phát âm · bật chế độ che để tự kiểm tra.
+          </p>
         </div>
 
-        <div className="searchFieldWrap">
+        <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'top100'}
+            className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
+            onClick={() => {
+              setScope('top100');
+              setRevealed({});
+            }}
+          >
+            100 từ thông dụng
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'all360'}
+            className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
+            onClick={() => {
+              setScope('all360');
+              setRevealed({});
+            }}
+          >
+            Đầy đủ {IRR_ALL.length} từ
+          </button>
+        </div>
+      </div>
+
+      <div className="libFilterRow">
+        <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
           <IconSearch size={16} className="searchFieldIcon" />
           <input
             value={search}
@@ -153,106 +147,93 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
           />
         </div>
 
-        <div className="catChips">
-          {chips.map(([k, label, n]) => (
-            <button
-              key={k}
-              type="button"
-              className={`chip ${filter === k ? 'active' : ''}`}
-              onClick={() => setFilter(k)}
-            >
-              {label} <span className="chipN">{n}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="irrTools">
-          <button
-            type="button"
-            className={`chip btnIconText ${slow ? 'active' : ''}`}
-            onClick={() => {
-              const next = !slow;
-              setSlow(next);
-              onToast(next ? 'Đọc chậm 0.5×: BẬT' : 'Đọc tốc độ thường');
-            }}
-          >
-            <IconGauge size={15} />
-            <span>Đọc chậm 0.5×</span>
-          </button>
-          <button
-            type="button"
-            className={`chip btnIconText ${hide ? 'active' : ''}`}
-            onClick={() => {
-              setHide((h) => !h);
-              setRevealed({});
-            }}
-          >
-            <IconEyeOff size={15} />
-            <span>Che V2 · V3 · Nghĩa để tự kiểm tra</span>
-          </button>
-        </div>
-
-        <div className="azBar">
-          {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
-            <button
-              key={L}
-              type="button"
-              className={letterCounts[L] ? '' : 'off'}
-              onClick={() => jumpLetter(L)}
-            >
-              {L}
-            </button>
-          ))}
-        </div>
-
-        <div className="irrWrap">
-          <table className={`irrTable ${hide ? 'irrHide' : ''}`}>
-            <thead>
-              <tr>
-                <th title="Đọc cả hàng" aria-label="Đọc cả hàng">
-                  <IconVolume size={16} />
-                </th>
-                <th>V1</th>
-                <th>V2</th>
-                <th>V3</th>
-                <th>Nghĩa</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="empty">
-                    Không tìm thấy động từ phù hợp.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((r, idx) => {
-                  const L = firstLetter(r[0]);
-                  const showHeader = L !== currentLetter;
-                  if (showHeader) currentLetter = L;
-                  return (
-                    <RowGroup
-                      key={`${scope}-${r[0]}-${idx}`}
-                      letter={showHeader ? L : null}
-                      letterCount={letterCounts[L] || 0}
-                      row={r}
-                      idx={idx}
-                      revealed={revealed}
-                      onSpeakRow={() => onSpeak(`${r[0]}. ${r[1]}. ${r[2]}`, slow)}
-                      onCellClick={(col) => handleCellClick(idx, col, r)}
-                    />
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="irrCount">
-          Hiển thị {filtered.length} / {dataset.length} động từ · bấm vào từng ô để nghe phát âm
-        </div>
+        <button
+          type="button"
+          className={`chip btnIconText ${hide ? 'active' : ''}`}
+          onClick={() => {
+            setHide((h) => !h);
+            setRevealed({});
+          }}
+          style={{ padding: '10px 16px', fontSize: 14 }}
+        >
+          <IconEyeOff size={16} />
+          <span>{hide ? 'Đang che V2 · V3 · Nghĩa' : 'Che V2 · V3 · Nghĩa để tự dò'}</span>
+        </button>
       </div>
-    </div>
+
+      <div className="catChips">
+        {chips.map(([k, label, n]) => (
+          <button
+            key={k}
+            type="button"
+            className={`chip ${filter === k ? 'active' : ''}`}
+            onClick={() => setFilter(k)}
+          >
+            {label} <span className="chipN">{n}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="azBar">
+        {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
+          <button
+            key={L}
+            type="button"
+            className={letterCounts[L] ? '' : 'off'}
+            onClick={() => jumpLetter(L)}
+          >
+            {L}
+          </button>
+        ))}
+      </div>
+
+      <div className="irrWrap pageIrrWrap">
+        <table className={`irrTable ${hide ? 'irrHide' : ''}`}>
+          <thead>
+            <tr>
+              <th title="Đọc cả hàng" aria-label="Đọc cả hàng">
+                <IconVolume size={16} />
+              </th>
+              <th>V1 (Nguyên mẫu)</th>
+              <th>V2 (Quá khứ)</th>
+              <th>V3 (Quá khứ phân từ)</th>
+              <th>Nghĩa tiếng Việt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="empty">
+                  Không tìm thấy động từ phù hợp.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((r, idx) => {
+                const L = firstLetter(r[0]);
+                const showHeader = L !== currentLetter;
+                if (showHeader) currentLetter = L;
+                return (
+                  <RowGroup
+                    key={`${scope}-${r[0]}-${idx}`}
+                    letter={showHeader ? L : null}
+                    letterCount={letterCounts[L] || 0}
+                    row={r}
+                    idx={idx}
+                    revealed={revealed}
+                    onSpeakRow={() => onSpeak(`${r[0]}. ${r[1]}. ${r[2]}`, false)}
+                    onCellClick={(col) => handleCellClick(idx, col, r)}
+                  />
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="irrCount">
+        Hiển thị {filtered.length} / {dataset.length} động từ
+      </div>
+    </section>
   );
 }
 
@@ -289,7 +270,7 @@ function RowGroup({
             type="button"
             className="spkBtn"
             onClick={onSpeakRow}
-            title="Đọc cả hàng: V1 – V2 – V3"
+            title="Đọc cả 3 dạng V1 – V2 – V3"
             aria-label={`Đọc ${row[0]}`}
           >
             <IconVolume size={16} />

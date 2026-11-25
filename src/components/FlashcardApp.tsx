@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/pos';
-import IrregularModal from './IrregularModal';
-import GrammarModal from './GrammarModal';
+import DictationPractice from './DictationPractice';
+import IrregularView from './IrregularView';
 import {
   IconBook,
   IconCheck,
@@ -11,12 +11,14 @@ import {
   IconDownload,
   IconEdit,
   IconFlame,
+  IconHeadphones,
   IconLayers,
   IconList,
   IconLogout,
   IconMoon,
   IconPlus,
   IconQuiz,
+  IconRepeat,
   IconRotateCcw,
   IconSearch,
   IconShuffle,
@@ -50,6 +52,8 @@ export interface DailyStats {
 
 interface QuizQuestion {
   card: CardItem;
+  prompt: string;
+  subPrompt?: string;
   options: string[];
   correctIdx: number;
 }
@@ -62,6 +66,9 @@ interface QuizState {
   selectedIdx: number | null;
   wrong: CardItem[];
 }
+
+type MainTab = 'study' | 'practice' | 'library' | 'irregular';
+type PracticeSubTab = 'dictation' | 'quiz';
 
 function shuffleArray<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -111,32 +118,27 @@ export default function FlashcardApp({ username }: Props) {
   const [loading, setLoading] = useState(true);
   const [daily, setDaily] = useState<DailyStats>({ streak: 0, lastDate: '', todayCount: 0 });
 
+  // Top-level studio navigation
+  const [activeTab, setActiveTab] = useState<MainTab>('study');
+  const [practiceMode, setPracticeMode] = useState<PracticeSubTab>('dictation');
+
+  // Study tab state
   const [mode, setMode] = useState<'all' | 'unlearned' | 'learned'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | PosKey>('all');
   const [shuffledIds, setShuffledIds] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
+  const [reverseMode, setReverseMode] = useState(false);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
 
   // Preferences
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Modals
-  const [activeModal, setActiveModal] = useState<
-    null | 'edit' | 'review' | 'quiz' | 'data' | 'cat' | 'irr' | 'grammar'
-  >(null);
-
-  // Reverse study mode (EN -> VI vs VI -> EN)
-  const [reverseMode, setReverseMode] = useState(false);
-
-  // Spelling practice under flashcard
-  const [spellInput, setSpellInput] = useState('');
-  const [spellStatus, setSpellStatus] = useState<'idle' | 'correct' | 'wrong'>('idle');
-
-  // Recently viewed cards (up to 6)
-  const [recentIds, setRecentIds] = useState<string[]>([]);
+  // Modals (only lightweight utility modals: Add/Edit card & JSON Backup/Restore)
+  const [activeModal, setActiveModal] = useState<null | 'edit' | 'data'>(null);
 
   // Edit / Add form
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -146,15 +148,15 @@ export default function FlashcardApp({ username }: Props) {
   const wordInputRef = useRef<HTMLInputElement | null>(null);
   const meaningInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Review modal
-  const [reviewMode, setReviewMode] = useState<'all' | 'learned' | 'unlearned'>('all');
-  const [reviewSearch, setReviewSearch] = useState('');
+  // Vocabulary Library tab filters
+  const [libStatus, setLibStatus] = useState<'all' | 'unlearned' | 'learned'>('all');
+  const [libPos, setLibPos] = useState<'all' | PosKey>('all');
+  const [libSearch, setLibSearch] = useState('');
 
-  // Category modal
-  const [catFilter, setCatFilter] = useState<'all' | PosKey>('all');
-  const [catSearch, setCatSearch] = useState('');
-
-  // Quiz modal
+  // Practice Quiz state (inline inside Practice tab)
+  const [quizPoolMode, setQuizPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
+  const [quizSize, setQuizSize] = useState<10 | 20 | 30>(10);
+  const [quizDir, setQuizDir] = useState<'en-vi' | 'vi-en'>('en-vi');
   const [quizState, setQuizState] = useState<QuizState | null>(null);
 
   // Data modal
@@ -169,7 +171,7 @@ export default function FlashcardApp({ username }: Props) {
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Loud 4.5x Web Audio TTS pipeline (AudioBufferSourceNode at 1.0x pitch + GainNode + Limiter)
+  // Loud 4.5x Web Audio TTS pipeline
   const enVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const speakSeqRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -332,7 +334,6 @@ export default function FlashcardApp({ username }: Props) {
         const source = ctx.createBufferSource();
         source.buffer = audioBuf;
 
-        // Strong 4.5x gain with limiter compressor for loud, punchy, distortion-free voice
         const gain = ctx.createGain();
         gain.gain.value = 4.5;
 
@@ -362,7 +363,7 @@ export default function FlashcardApp({ username }: Props) {
     [stopSpeech, speakFallback]
   );
 
-  // Filtered view
+  // Study filtered deck
   const view = useMemo(() => {
     const filtered = cards.filter(
       (c) =>
@@ -398,12 +399,11 @@ export default function FlashcardApp({ username }: Props) {
     document.title = `Flashcard TOEIC — ${cards.length} từ vựng`;
   }, [cards.length]);
 
-  // Track recently viewed cards & reset spelling input when card changes
   useEffect(() => {
-    setSpellInput('');
-    setSpellStatus('idle');
     if (currentCard?.id) {
-      setRecentIds((prev) => [currentCard.id, ...prev.filter((id) => id !== currentCard.id)].slice(0, 7));
+      setRecentIds((prev) =>
+        [currentCard.id, ...prev.filter((id) => id !== currentCard.id)].slice(0, 8)
+      );
     }
   }, [currentCard?.id]);
 
@@ -415,28 +415,6 @@ export default function FlashcardApp({ username }: Props) {
       .filter((c): c is CardItem => Boolean(c))
       .slice(0, 6);
   }, [cards, recentIds, currentCard?.id]);
-
-  const checkSpelling = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentCard) return;
-    const typed = keyOf(spellInput);
-    if (!typed) return;
-    // Accept exact word or any synonym separated by = or /
-    const cleanWord = currentCard.word.replace(/\([^)]*\)/g, ' ');
-    const validAnswers = [
-      keyOf(currentCard.word),
-      keyOf(cleanWord),
-      ...cleanWord.split(/[/=]/).map((s) => keyOf(s)),
-    ].filter(Boolean);
-    if (validAnswers.includes(typed)) {
-      setSpellStatus('correct');
-      speak(currentCard.word, false);
-      showToast('Chính xác! Chuẩn chính tả.', 'success');
-    } else {
-      setSpellStatus('wrong');
-      showToast(`Chưa đúng — đáp án: ${capFirst(currentCard.word)}`, 'error');
-    }
-  };
 
   const stats = useMemo(() => {
     const total = cards.length;
@@ -496,22 +474,13 @@ export default function FlashcardApp({ username }: Props) {
     if (view.length) setFlipped((f) => !f);
   }, [view.length]);
 
-  const mark = useCallback(
-    async (value: boolean) => {
-      if (!currentCard) return;
-      const id = currentCard.id;
-
+  const setCardLearnedById = useCallback(
+    async (id: string, value: boolean) => {
       setCards((prev) => prev.map((c) => (c.id === id ? { ...c, learned: value } : c)));
-      setFlipped(false);
-      stopSpeech();
-      if ((mode === 'unlearned' && value) || (mode === 'learned' && !value)) {
-        setShuffledIds((prev) => prev.filter((x) => x !== id));
-      }
       showToast(
         value ? 'Đã chuyển vào mục Đã thuộc' : 'Đã chuyển vào mục Chưa thuộc',
         value ? 'success' : 'info'
       );
-
       try {
         const res = await fetch(`/api/cards/${id}`, {
           method: 'PATCH',
@@ -523,10 +492,43 @@ export default function FlashcardApp({ username }: Props) {
           if (data.daily) setDaily(data.daily);
         }
       } catch {
-        showToast('Lỗi lưu tiến độ lên máy chủ', 'error');
+        showToast('Lỗi đồng bộ tiến độ lên máy chủ', 'error');
       }
     },
-    [currentCard, mode, stopSpeech, showToast]
+    [showToast]
+  );
+
+  const mark = useCallback(
+    async (value: boolean) => {
+      if (!currentCard) return;
+      const id = currentCard.id;
+      setFlipped(false);
+      stopSpeech();
+      if ((mode === 'unlearned' && value) || (mode === 'learned' && !value)) {
+        setShuffledIds((prev) => prev.filter((x) => x !== id));
+      }
+      await setCardLearnedById(id, value);
+    },
+    [currentCard, mode, stopSpeech, setCardLearnedById]
+  );
+
+  const markManyUnlearned = useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return;
+      const idSet = new Set(ids);
+      setCards((prev) => prev.map((c) => (idSet.has(c.id) ? { ...c, learned: false } : c)));
+      showToast(`Đã đánh dấu ${ids.length} từ là chưa thuộc`, 'info');
+      try {
+        await fetch('/api/cards/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'mark-unlearned', ids }),
+        });
+      } catch {
+        showToast('Lỗi đồng bộ lên máy chủ', 'error');
+      }
+    },
+    [showToast]
   );
 
   const toggleTheme = useCallback(() => {
@@ -549,8 +551,8 @@ export default function FlashcardApp({ username }: Props) {
       /* ignore */
     }
     showToast(next ? 'Tự động đọc: BẬT' : 'Tự động đọc: TẮT');
-    if (next && currentCard) speak(currentCard.word, false);
-  }, [autoSpeak, currentCard, speak, showToast]);
+    if (next && activeTab === 'study' && currentCard) speak(currentCard.word, false);
+  }, [autoSpeak, activeTab, currentCard, speak, showToast]);
 
   const handleModeChange = (m: 'all' | 'unlearned' | 'learned') => {
     setMode(m);
@@ -570,10 +572,11 @@ export default function FlashcardApp({ username }: Props) {
     setShuffledIds(shuffleArray(cards.map((c) => c.id)));
     setCurrentIndex(0);
     setFlipped(false);
-    showToast('Đã trộn ngẫu nhiên các thẻ');
+    showToast('Đã trộn ngẫu nhiên bộ thẻ');
   };
 
   const jumpToCard = useCallback((id: string) => {
+    setActiveTab('study');
     setMode('all');
     setTypeFilter('all');
     setFlipped(false);
@@ -595,7 +598,13 @@ export default function FlashcardApp({ username }: Props) {
     const found = cards.find(
       (c) => keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q))
     );
-    if (found) jumpToCard(found.id);
+    if (found) {
+      setMode('all');
+      setTypeFilter('all');
+      setFlipped(false);
+      setShuffledIds((prev) => [found.id, ...prev.filter((x) => x !== found.id)]);
+      setCurrentIndex(0);
+    }
   };
 
   const openAdd = () => {
@@ -702,48 +711,69 @@ export default function FlashcardApp({ username }: Props) {
     }
   };
 
-  const toggleLearnedInList = async (card: CardItem) => {
-    const nextVal = !card.learned;
-    setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, learned: nextVal } : c)));
-    showToast(
-      nextVal ? 'Đã chuyển vào mục Đã thuộc' : 'Đã chuyển vào mục Chưa thuộc',
-      nextVal ? 'success' : 'info'
-    );
-    try {
-      const res = await fetch(`/api/cards/${card.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ learned: nextVal }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.daily) setDaily(data.daily);
+  // Practice Quiz builder (inline inside Practice -> Trắc nghiệm)
+  const buildQuiz = useCallback(
+    (
+      customSource?: CardItem[],
+      customSize?: 10 | 20 | 30,
+      customDir?: 'en-vi' | 'vi-en'
+    ) => {
+      if (cards.length < 4) {
+        showToast('Cần ít nhất 4 thẻ để làm trắc nghiệm', 'error');
+        return;
       }
-    } catch {
-      showToast('Lỗi đồng bộ lên máy chủ', 'error');
-    }
-  };
+      const dir = customDir ?? quizDir;
+      const sz = customSize ?? quizSize;
+      const filteredPool =
+        customSource ??
+        cards.filter((c) =>
+          quizPoolMode === 'all' ? true : quizPoolMode === 'learned' ? c.learned : !c.learned
+        );
+      const src = filteredPool.length >= 4 ? filteredPool : cards;
+      const chosen = shuffleArray(src).slice(0, Math.min(sz, src.length));
 
-  const openQuiz = useCallback(() => {
-    const pool = view.length >= 4 ? view : cards;
-    if (pool.length < 4) {
-      showToast('Cần ít nhất 4 thẻ để trắc nghiệm', 'error');
-      return;
+      const questions: QuizQuestion[] = chosen.map((card) => {
+        if (dir === 'en-vi') {
+          const correct = capFirst(card.meanings[0].text);
+          const others = shuffleArray(cards.filter((c) => c.id !== card.id))
+            .slice(0, 3)
+            .map((c) => capFirst(c.meanings[0].text));
+          const options = shuffleArray([correct, ...others]);
+          return {
+            card,
+            prompt: capFirst(card.word),
+            subPrompt: card.meanings[0]?.phonetic,
+            options,
+            correctIdx: options.indexOf(correct),
+          };
+        } else {
+          const correct = capFirst(card.word);
+          const others = shuffleArray(cards.filter((c) => c.id !== card.id))
+            .slice(0, 3)
+            .map((c) => capFirst(c.word));
+          const options = shuffleArray([correct, ...others]);
+          return {
+            card,
+            prompt: card.meanings.map((m) => capFirst(m.text)).join('; '),
+            options,
+            correctIdx: options.indexOf(correct),
+          };
+        }
+      });
+
+      setQuizState({ questions, i: 0, score: 0, answered: false, selectedIdx: null, wrong: [] });
+      if (dir === 'en-vi' && autoSpeak && questions[0]) {
+        speak(questions[0].card.word, false);
+      }
+    },
+    [cards, quizDir, quizSize, quizPoolMode, showToast, autoSpeak, speak]
+  );
+
+  useEffect(() => {
+    if (activeTab === 'practice' && practiceMode === 'quiz' && !quizState && cards.length >= 4) {
+      buildQuiz();
     }
-    const n = Math.min(10, pool.length);
-    const chosen = shuffleArray(pool).slice(0, n);
-    const questions: QuizQuestion[] = chosen.map((card) => {
-      const correct = capFirst(card.meanings[0].text);
-      const others = shuffleArray(pool.filter((c) => c.id !== card.id))
-        .slice(0, 3)
-        .map((c) => capFirst(c.meanings[0].text));
-      const options = shuffleArray([correct, ...others]);
-      return { card, options, correctIdx: options.indexOf(correct) };
-    });
-    setQuizState({ questions, i: 0, score: 0, answered: false, selectedIdx: null, wrong: [] });
-    setActiveModal('quiz');
-    if (autoSpeak && questions[0]) speak(questions[0].card.word, false);
-  }, [view, cards, showToast, autoSpeak, speak]);
+  }, [activeTab, practiceMode, quizState, cards.length, buildQuiz]);
 
   const handleQuizPick = useCallback(
     (idx: number) => {
@@ -754,16 +784,20 @@ export default function FlashcardApp({ username }: Props) {
         const nextScore = isCorrect ? prev.score + 1 : prev.score;
         const nextWrong = isCorrect ? prev.wrong : [...prev.wrong, q.card];
 
+        if (quizDir === 'vi-en') {
+          speak(q.card.word, false);
+        }
+
         setTimeout(() => {
           setQuizState((cur) => {
             if (!cur) return cur;
             const nextI = cur.i + 1;
-            if (autoSpeak && cur.questions[nextI]) {
+            if (quizDir === 'en-vi' && autoSpeak && cur.questions[nextI]) {
               speak(cur.questions[nextI].card.word, false);
             }
             return { ...cur, i: nextI, answered: false, selectedIdx: null };
           });
-        }, isCorrect ? 650 : 1200);
+        }, isCorrect ? 650 : 1250);
 
         return {
           ...prev,
@@ -774,26 +808,8 @@ export default function FlashcardApp({ username }: Props) {
         };
       });
     },
-    [autoSpeak, speak]
+    [quizDir, autoSpeak, speak]
   );
-
-  const markWrongUnlearned = async () => {
-    if (!quizState?.wrong.length) return;
-    const ids = quizState.wrong.map((c) => c.id);
-    const idSet = new Set(ids);
-    setCards((prev) => prev.map((c) => (idSet.has(c.id) ? { ...c, learned: false } : c)));
-    setActiveModal(null);
-    showToast(`Đã đánh dấu ${ids.length} từ là chưa thuộc`);
-    try {
-      await fetch('/api/cards/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'mark-unlearned', ids }),
-      });
-    } catch {
-      showToast('Lỗi đồng bộ lên máy chủ', 'error');
-    }
-  };
 
   const exportData = () => {
     const payload = cards.map((c, idx) => ({
@@ -869,7 +885,7 @@ export default function FlashcardApp({ username }: Props) {
     window.location.href = '/';
   };
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts scoped to activeTab
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -880,9 +896,16 @@ export default function FlashcardApp({ username }: Props) {
       }
       const tag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (activeModal) return;
+
       const k = (e.key || '').toLowerCase();
 
-      if (activeModal === 'quiz' && quizState && quizState.i < quizState.questions.length) {
+      if (
+        activeTab === 'practice' &&
+        practiceMode === 'quiz' &&
+        quizState &&
+        quizState.i < quizState.questions.length
+      ) {
         if (k >= '1' && k <= '4' && !quizState.answered) {
           e.preventDefault();
           handleQuizPick(Number(k) - 1);
@@ -893,7 +916,7 @@ export default function FlashcardApp({ username }: Props) {
         return;
       }
 
-      if (activeModal) return;
+      if (activeTab !== 'study') return;
 
       if (e.key === 'ArrowRight') nextCard();
       else if (e.key === 'ArrowLeft') previousCard();
@@ -918,6 +941,8 @@ export default function FlashcardApp({ username }: Props) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [
     activeModal,
+    activeTab,
+    practiceMode,
     quizState,
     handleQuizPick,
     speak,
@@ -930,39 +955,30 @@ export default function FlashcardApp({ username }: Props) {
     toggleAutoSpeak,
   ]);
 
-  const reviewFiltered = useMemo(() => {
-    const q = keyOf(reviewSearch);
-    const arr = cards.filter(
-      (c) =>
-        (reviewMode === 'all' || (reviewMode === 'learned' ? c.learned : !c.learned)) &&
-        (keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q)))
+  // Unified Vocabulary Library filtered data (status + POS + search + A-Z)
+  const libData = useMemo(() => {
+    const statusBase = cards.filter((c) =>
+      libStatus === 'all' ? true : libStatus === 'learned' ? c.learned : !c.learned
     );
-    arr.sort((a, b) => sortKey(a.word).localeCompare(sortKey(b.word), 'en'));
-    const letters: Record<string, number> = {};
-    arr.forEach((c) => {
-      const L = firstLetter(c.word);
-      letters[L] = (letters[L] || 0) + 1;
-    });
-    return { arr, letters };
-  }, [cards, reviewMode, reviewSearch]);
+    const posCounts: Record<string, number> = {};
+    statusBase.forEach((c) => detectPOS(c).forEach((t) => (posCounts[t] = (posCounts[t] || 0) + 1)));
 
-  const catData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    cards.forEach((c) => detectPOS(c).forEach((t) => (counts[t] = (counts[t] || 0) + 1)));
-    const q = keyOf(catSearch);
-    const arr = cards.filter(
+    const q = keyOf(libSearch);
+    const arr = statusBase.filter(
       (c) =>
-        (catFilter === 'all' || detectPOS(c).includes(catFilter)) &&
-        (keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q)))
+        (libPos === 'all' || detectPOS(c).includes(libPos)) &&
+        (!q || keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q)))
     );
     arr.sort((a, b) => sortKey(a.word).localeCompare(sortKey(b.word), 'en'));
+
     const letters: Record<string, number> = {};
     arr.forEach((c) => {
       const L = firstLetter(c.word);
       letters[L] = (letters[L] || 0) + 1;
     });
-    return { counts, arr, letters };
-  }, [cards, catFilter, catSearch]);
+
+    return { statusBaseLen: statusBase.length, posCounts, arr, letters };
+  }, [cards, libStatus, libPos, libSearch]);
 
   const jumpLetter = (prefix: string, L: string) => {
     const el = document.getElementById(`${prefix}-${L === '#' ? '0' : L}`);
@@ -970,7 +986,7 @@ export default function FlashcardApp({ username }: Props) {
   };
 
   // Circular SVG ring math
-  const ringRadius = 46;
+  const ringRadius = 38;
   const ringCircumference = 2 * Math.PI * ringRadius;
   const ringOffset = ringCircumference * (1 - stats.pct / 100);
 
@@ -987,31 +1003,72 @@ export default function FlashcardApp({ username }: Props) {
 
   return (
     <div className="workspaceRoot">
-      {/* Top sticky navigation bar matching reference design */}
+      {/* Top Studio Navigation Bar */}
       <header className="topBar">
         <div className="topBarInner">
           <div className="topBrand">
             <span className="topBrandMark">
               <IconBook size={18} />
             </span>
-            <span className="topBrandName">Flashcard TOEIC</span>
-            <span className="topCountPill">{stats.total} từ vựng</span>
+            <div>
+              <div className="topBrandName">Flashcard TOEIC</div>
+              <div className="topBrandSub">
+                {stats.learned}/{stats.total} đã thuộc ({stats.pct}%)
+              </div>
+            </div>
           </div>
 
-          <div className="topSearchWrap">
-            <IconSearch size={16} className="searchFieldIcon" />
-            <input
-              value={quickSearch}
-              onChange={(e) => handleQuickSearch(e.target.value)}
-              placeholder="Tìm nhanh & nhảy tới thẻ..."
-            />
-          </div>
+          {/* 4 Main Studio Tabs */}
+          <nav className="navTabs" aria-label="Điều hướng chính">
+            <button
+              type="button"
+              className={`navTab ${activeTab === 'study' ? 'active' : ''}`}
+              onClick={() => {
+                stopSpeech();
+                setActiveTab('study');
+              }}
+            >
+              <IconBook size={16} />
+              <span>Học thẻ</span>
+            </button>
+            <button
+              type="button"
+              className={`navTab ${activeTab === 'practice' ? 'active' : ''}`}
+              onClick={() => {
+                stopSpeech();
+                setActiveTab('practice');
+              }}
+            >
+              <IconHeadphones size={16} />
+              <span>Luyện tập</span>
+            </button>
+            <button
+              type="button"
+              className={`navTab ${activeTab === 'library' ? 'active' : ''}`}
+              onClick={() => {
+                stopSpeech();
+                setActiveTab('library');
+              }}
+            >
+              <IconList size={16} />
+              <span>Danh sách từ</span>
+              <span className="navTabCount">{stats.total}</span>
+            </button>
+            <button
+              type="button"
+              className={`navTab ${activeTab === 'irregular' ? 'active' : ''}`}
+              onClick={() => {
+                stopSpeech();
+                setActiveTab('irregular');
+              }}
+            >
+              <IconLayers size={16} />
+              <span>Bất quy tắc</span>
+            </button>
+          </nav>
 
+          {/* Right Utility Actions */}
           <div className="topActions">
-            <span className="userBadge">
-              <IconUser size={14} />
-              <span>{username}</span>
-            </span>
             <button
               type="button"
               className={`iconBtn ${autoSpeak ? 'success' : 'ghost'}`}
@@ -1025,27 +1082,31 @@ export default function FlashcardApp({ username }: Props) {
               type="button"
               className="iconBtn ghost"
               onClick={toggleTheme}
-              title="Đổi giao diện sáng/tối"
-              aria-label="Đổi giao diện sáng/tối"
+              title="Đổi giao diện sáng / tối"
+              aria-label="Đổi giao diện sáng / tối"
             >
               {theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}
             </button>
             <button
               type="button"
-              className="ghost btnIconText"
+              className="ghost small btnIconText"
               onClick={() => setActiveModal('data')}
               title="Sao lưu / phục hồi JSON"
             >
-              <IconDatabase size={16} />
+              <IconDatabase size={15} />
               <span>Dữ liệu</span>
             </button>
-            <button type="button" className="primary btnIconText" onClick={openAdd}>
-              <IconPlus size={16} />
+            <button type="button" className="primary small btnIconText" onClick={openAdd}>
+              <IconPlus size={15} />
               <span>Thêm từ</span>
             </button>
+            <span className="userBadge">
+              <IconUser size={14} />
+              <span>{username}</span>
+            </span>
             <button
               type="button"
-              className="ghost btnIconText"
+              className="ghost small btnIconText"
               onClick={handleLogout}
               title="Đăng xuất"
             >
@@ -1056,467 +1117,871 @@ export default function FlashcardApp({ username }: Props) {
         </div>
       </header>
 
-      {/* Main 3-column workspace */}
-      <div className="triGrid">
-        {/* LEFT COLUMN: Mode selector + Vertical POS list */}
-        <aside className="leftCol" aria-label="Lọc từ vựng">
-          <div className="leftModeTabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'all'}
-              className={`leftModeTab ${mode === 'all' ? 'active' : ''}`}
-              onClick={() => handleModeChange('all')}
-            >
-              <span>Tất cả</span>
-              <span className="leftModeNum">{stats.total}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'unlearned'}
-              className={`leftModeTab ${mode === 'unlearned' ? 'active' : ''}`}
-              onClick={() => handleModeChange('unlearned')}
-            >
-              <span>Chưa thuộc</span>
-              <span className="leftModeNum">{stats.remain}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === 'learned'}
-              className={`leftModeTab ${mode === 'learned' ? 'active' : ''}`}
-              onClick={() => handleModeChange('learned')}
-            >
-              <span>Đã thuộc</span>
-              <span className="leftModeNum">{stats.learned}</span>
-            </button>
-          </div>
+      {/* ==================== TAB 1: HỌC THẺ (STUDY STUDIO) ==================== */}
+      {activeTab === 'study' && (
+        <div className="studioGrid">
+          {/* Left Rail: Mastery Overview + Quick Search + Status & POS Filters */}
+          <aside className="studioRail" aria-label="Tiến độ và bộ lọc thẻ">
+            <div className="railMasteryCard">
+              <div className="railMasteryRow">
+                <div className="railRingWrap">
+                  <svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">
+                    <circle
+                      cx="46"
+                      cy="46"
+                      r={ringRadius}
+                      fill="none"
+                      stroke="var(--line-soft)"
+                      strokeWidth="8"
+                    />
+                    <circle
+                      cx="46"
+                      cy="46"
+                      r={ringRadius}
+                      fill="none"
+                      stroke="var(--teal)"
+                      strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={ringCircumference}
+                      strokeDashoffset={ringOffset}
+                      transform="rotate(-90 46 46)"
+                      style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                    />
+                  </svg>
+                  <span className="railRingPct">{stats.pct}%</span>
+                </div>
+                <div className="railMasteryInfo">
+                  <div className="railMasteryTitle">Tiến độ thuộc từ</div>
+                  <div className="railMasteryNums">
+                    <b>{stats.learned}</b> / {stats.total} thẻ
+                  </div>
+                  <div className="railMasteryRemain">Còn {stats.remain} từ cần ôn</div>
+                </div>
+              </div>
 
-          <div className="posListCard">
-            <button
-              type="button"
-              className={`posListRow ${typeFilter === 'all' ? 'active' : ''}`}
-              onClick={() => handleTypeChange('all')}
-            >
-              <span>Tất cả</span>
-              <span className="posListNum">{typeCounts.baseLen}</span>
-            </button>
-            {POS_LIST.map(([k, label]) => {
-              const n = typeCounts.counts[k] || 0;
-              if (!n && typeFilter !== k) return null;
-              return (
+              <div className="railStreakBar">
+                <IconFlame size={15} className="flameIcon" />
+                <span>
+                  Chuỗi {dailyDisplay.streak} ngày
+                  {dailyDisplay.today > 0 ? ` · hôm nay +${dailyDisplay.today}` : ''}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick jump search */}
+            <div className="searchFieldWrap railSearch">
+              <IconSearch size={16} className="searchFieldIcon" />
+              <input
+                value={quickSearch}
+                onChange={(e) => handleQuickSearch(e.target.value)}
+                placeholder="Tìm nhanh & nhảy tới thẻ..."
+              />
+            </div>
+
+            {/* Status filter */}
+            <div className="leftModeTabs" role="tablist" aria-label="Trạng thái thuộc">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'all'}
+                className={`leftModeTab ${mode === 'all' ? 'active' : ''}`}
+                onClick={() => handleModeChange('all')}
+              >
+                <span>Tất cả thẻ</span>
+                <span className="leftModeNum">{stats.total}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'unlearned'}
+                className={`leftModeTab ${mode === 'unlearned' ? 'active' : ''}`}
+                onClick={() => handleModeChange('unlearned')}
+              >
+                <span>Chưa thuộc</span>
+                <span className="leftModeNum">{stats.remain}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'learned'}
+                className={`leftModeTab ${mode === 'learned' ? 'active' : ''}`}
+                onClick={() => handleModeChange('learned')}
+              >
+                <span>Đã thuộc</span>
+                <span className="leftModeNum">{stats.learned}</span>
+              </button>
+            </div>
+
+            {/* POS filter */}
+            <div className="posListCard">
+              <div className="railSectionCap">LỌC THEO TỪ LOẠI</div>
+              <button
+                type="button"
+                className={`posListRow ${typeFilter === 'all' ? 'active' : ''}`}
+                onClick={() => handleTypeChange('all')}
+              >
+                <span>Tất cả từ loại</span>
+                <span className="posListNum">{typeCounts.baseLen}</span>
+              </button>
+              {POS_LIST.map(([k, label]) => {
+                const n = typeCounts.counts[k] || 0;
+                if (!n && typeFilter !== k) return null;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`posListRow ${typeFilter === k ? 'active' : ''}`}
+                    onClick={() => handleTypeChange(k)}
+                  >
+                    <span>{label}</span>
+                    <span className="posListNum">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Main Flashcard Stage */}
+          <main className="studioStage">
+            <div className="centerTopBar">
+              <div className="centerTopLeft">
+                <span className="centerCounter">
+                  {view.length ? `${safeIndex + 1} / ${view.length}` : '0 / 0'}
+                </span>
+                {currentCard && (
+                  <span className={`cardStatePill ${currentCard.learned ? 'ok' : ''}`}>
+                    <span className={`dot ${currentCard.learned ? 'ok' : ''}`} />
+                    {currentCard.learned ? 'Đã thuộc' : 'Chưa thuộc'}
+                  </span>
+                )}
+              </div>
+
+              <div className="centerTopActions">
                 <button
-                  key={k}
                   type="button"
-                  className={`posListRow ${typeFilter === k ? 'active' : ''}`}
-                  onClick={() => handleTypeChange(k)}
-                >
-                  <span>{label}</span>
-                  <span className="posListNum">{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        {/* CENTER COLUMN: Card status bar + Big centered Flashcard + Action row */}
-        <main className="centerCol">
-          <div className="centerTopBar">
-            <div className="centerTopLeft">
-              <span className="centerCounter">
-                {view.length ? `${safeIndex + 1} / ${view.length}` : '0 / 0'}
-              </span>
-              {currentCard && (
-                <span className={`cardStatePill ${currentCard.learned ? 'ok' : ''}`}>
-                  <span className={`dot ${currentCard.learned ? 'ok' : ''}`} />
-                  {currentCard.learned ? 'Đã thuộc' : 'Chưa thuộc'}
-                </span>
-              )}
-            </div>
-
-            <div className="centerTopActions">
-              <button
-                type="button"
-                className={`dirPillBtn ${reverseMode ? 'active' : ''}`}
-                onClick={() => {
-                  setReverseMode((r) => !r);
-                  setFlipped(false);
-                  showToast(
-                    !reverseMode ? 'Chế độ: Nghĩa Việt → Từ Anh' : 'Chế độ: Từ Anh → Nghĩa Việt'
-                  );
-                }}
-                title="Đảo chiều mặt trước / mặt sau"
-              >
-                {reverseMode ? 'VI → EN' : 'EN → VI'}
-              </button>
-              <button
-                type="button"
-                className="barIconBtn"
-                onClick={handleShuffle}
-                title="Trộn ngẫu nhiên"
-                aria-label="Trộn ngẫu nhiên"
-              >
-                <IconShuffle size={18} />
-              </button>
-              {currentCard && (
-                <>
-                  <button
-                    type="button"
-                    className={`barIconBtn ${isSpeaking ? 'speaking' : ''}`}
-                    onClick={speakCurrent}
-                    title="Phát âm to rõ (R)"
-                    aria-label="Phát âm"
-                  >
-                    <IconVolume size={19} />
-                  </button>
-                  <button
-                    type="button"
-                    className="barIconBtn"
-                    onClick={() => openEdit(currentCard)}
-                    title="Sửa thẻ"
-                    aria-label="Sửa thẻ"
-                  >
-                    <IconEdit size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    className="barIconBtn dangerHover"
-                    onClick={() => deleteCard(currentCard)}
-                    title="Xoá thẻ này"
-                    aria-label="Xoá thẻ này"
-                  >
-                    <IconTrash size={18} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 3D Flip Flashcard */}
-          <div
-            ref={flashcardRef}
-            className={`card triCard ${flipped ? 'flipped' : ''}`}
-            onClick={flipCard}
-            onTouchStart={(e) => {
-              if (e.touches.length !== 1) {
-                touchRef.current.tracking = false;
-                return;
-              }
-              touchRef.current = {
-                x0: e.touches[0].clientX,
-                y0: e.touches[0].clientY,
-                t0: Date.now(),
-                tracking: true,
-              };
-            }}
-            onTouchEnd={(e) => {
-              if (!touchRef.current.tracking) return;
-              touchRef.current.tracking = false;
-              const t = e.changedTouches[0];
-              const dx = t.clientX - touchRef.current.x0;
-              const dy = t.clientY - touchRef.current.y0;
-              if (
-                Math.abs(dx) > 55 &&
-                Math.abs(dx) > Math.abs(dy) * 1.5 &&
-                Date.now() - touchRef.current.t0 < 700
-              ) {
-                suppressFlipRef.current = true;
-                setTimeout(() => {
-                  suppressFlipRef.current = false;
-                }, 350);
-                if (dx < 0) nextCard();
-                else previousCard();
-              }
-            }}
-          >
-            <div className="inner triInner">
-              <div className="face triFace">
-                {reverseMode && currentCard ? (
-                  <>
-                    <div className="label">TIẾNG VIỆT</div>
-                    <div className="meaningList">
-                      {currentCard.meanings.map((m, idx) => (
-                        <div key={idx} className="meaningItem">
-                          {capFirst(m.text)}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem từ tiếng Anh</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="label">ENGLISH</div>
-                    <div className="word triWord">
-                      {currentCard
-                        ? capFirst(currentCard.word)
-                        : typeFilter !== 'all' && cards.length
-                          ? 'Không có thẻ thuộc loại từ này'
-                          : mode === 'learned'
-                            ? 'Chưa có thẻ đã thuộc'
-                            : mode === 'unlearned'
-                              ? 'Bạn đã thuộc hết bộ thẻ này'
-                              : 'Chưa có flashcard'}
-                    </div>
-                    {currentCard && (
-                      <>
-                        <div className="posBadge">
-                          {detectPOS(currentCard)
-                            .filter((t) => t !== 'other')
-                            .map((t) => (
-                              <span key={t} className="posTagWarm">
-                                {POS_SHORT[t]}
-                              </span>
-                            ))}
-                        </div>
-                        {currentCard.meanings[0]?.phonetic && (
-                          <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
-                        )}
-                      </>
-                    )}
-                    <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem nghĩa</div>
-                  </>
-                )}
-              </div>
-
-              <div className="face back triFace">
-                {reverseMode && currentCard ? (
-                  <>
-                    <div className="label">ENGLISH</div>
-                    <div className="word triWord">{capFirst(currentCard.word)}</div>
-                    <div className="posBadge">
-                      {detectPOS(currentCard)
-                        .filter((t) => t !== 'other')
-                        .map((t) => (
-                          <span key={t} className="posTagWarm">
-                            {POS_SHORT[t]}
-                          </span>
-                        ))}
-                    </div>
-                    {currentCard.meanings[0]?.phonetic && (
-                      <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="label">TIẾNG VIỆT</div>
-                    <div className="meaningList">
-                      {currentCard?.meanings.map((m, idx) => (
-                        <div key={idx} className="meaningItem">
-                          {capFirst(m.text)}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Row directly below card */}
-          <div className="triControls">
-            <button type="button" className="triBtnOutline" onClick={previousCard}>
-              ← Trước
-            </button>
-            <button
-              type="button"
-              className="triBtnOutline triBtnUnlearned btnIconText centerBtn"
-              onClick={() => mark(false)}
-            >
-              <IconX size={16} />
-              <span>Chưa thuộc</span>
-              <span className="keyTag">[C]</span>
-            </button>
-            <button
-              type="button"
-              className="triBtnSolid btnIconText centerBtn"
-              onClick={() => mark(true)}
-            >
-              <IconCheck size={16} />
-              <span>Đã thuộc</span>
-              <span className="keyTagSolid">[V]</span>
-            </button>
-            <button type="button" className="triBtnSolid" onClick={nextCard}>
-              Tiếp →
-            </button>
-          </div>
-
-          {/* Spelling Practice Panel (fills lower stage purposefully) */}
-          {currentCard && (
-            <form className="spellCard" onSubmit={checkSpelling}>
-              <div className="spellHead">
-                <span className="spellTitle">Luyện gõ chính tả</span>
-                <span className="spellHint">
-                  {reverseMode
-                    ? 'Nhập từ tiếng Anh tương ứng với nghĩa trên thẻ'
-                    : `Nghĩa: ${capFirst(currentCard.meanings[0].text)}`}
-                </span>
-              </div>
-              <div className="spellRow">
-                <input
-                  value={spellInput}
-                  onChange={(e) => {
-                    setSpellInput(e.target.value);
-                    if (spellStatus !== 'idle') setSpellStatus('idle');
+                  className="soft small btnIconText"
+                  onClick={() => {
+                    setPracticeMode('dictation');
+                    setActiveTab('practice');
                   }}
-                  className={
-                    spellStatus === 'correct'
-                      ? 'spellOk'
-                      : spellStatus === 'wrong'
-                        ? 'spellErr'
-                        : ''
-                  }
-                  placeholder="Gõ lại từ tiếng Anh rồi nhấn Enter để kiểm tra..."
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button type="submit" className="soft">
-                  Kiểm tra
+                  title="Chuyển sang Luyện nghe chép chính tả từng từ"
+                >
+                  <IconHeadphones size={15} />
+                  <span>Nghe chép từ</span>
+                </button>
+                <button
+                  type="button"
+                  className={`dirPillBtn ${reverseMode ? 'active' : ''}`}
+                  onClick={() => {
+                    setReverseMode((r) => !r);
+                    setFlipped(false);
+                    showToast(
+                      !reverseMode ? 'Chế độ: Nghĩa Việt → Từ Anh' : 'Chế độ: Từ Anh → Nghĩa Việt'
+                    );
+                  }}
+                  title="Đảo chiều mặt trước / mặt sau"
+                >
+                  <IconRepeat size={13} />
+                  <span>{reverseMode ? 'VI → EN' : 'EN → VI'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="barIconBtn"
+                  onClick={handleShuffle}
+                  title="Trộn ngẫu nhiên"
+                  aria-label="Trộn ngẫu nhiên"
+                >
+                  <IconShuffle size={18} />
+                </button>
+                {currentCard && (
+                  <>
+                    <button
+                      type="button"
+                      className={`barIconBtn ${isSpeaking ? 'speaking' : ''}`}
+                      onClick={speakCurrent}
+                      title="Phát âm to rõ (R)"
+                      aria-label="Phát âm"
+                    >
+                      <IconVolume size={19} />
+                    </button>
+                    <button
+                      type="button"
+                      className="barIconBtn"
+                      onClick={() => openEdit(currentCard)}
+                      title="Sửa thẻ"
+                      aria-label="Sửa thẻ"
+                    >
+                      <IconEdit size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="barIconBtn dangerHover"
+                      onClick={() => deleteCard(currentCard)}
+                      title="Xoá thẻ này"
+                      aria-label="Xoá thẻ này"
+                    >
+                      <IconTrash size={18} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* 3D Flip Flashcard */}
+            <div
+              ref={flashcardRef}
+              className={`card studioCard ${flipped ? 'flipped' : ''}`}
+              onClick={flipCard}
+              onTouchStart={(e) => {
+                if (e.touches.length !== 1) {
+                  touchRef.current.tracking = false;
+                  return;
+                }
+                touchRef.current = {
+                  x0: e.touches[0].clientX,
+                  y0: e.touches[0].clientY,
+                  t0: Date.now(),
+                  tracking: true,
+                };
+              }}
+              onTouchEnd={(e) => {
+                if (!touchRef.current.tracking) return;
+                touchRef.current.tracking = false;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - touchRef.current.x0;
+                const dy = t.clientY - touchRef.current.y0;
+                if (
+                  Math.abs(dx) > 55 &&
+                  Math.abs(dx) > Math.abs(dy) * 1.5 &&
+                  Date.now() - touchRef.current.t0 < 700
+                ) {
+                  suppressFlipRef.current = true;
+                  setTimeout(() => {
+                    suppressFlipRef.current = false;
+                  }, 350);
+                  if (dx < 0) nextCard();
+                  else previousCard();
+                }
+              }}
+            >
+              <div className="inner studioInner">
+                <div className="face studioFace">
+                  {reverseMode && currentCard ? (
+                    <>
+                      <div className="label">TIẾNG VIỆT</div>
+                      <div className="meaningList">
+                        {currentCard.meanings.map((m, idx) => (
+                          <div key={idx} className="meaningItem">
+                            {capFirst(m.text)}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem từ tiếng Anh</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="label">ENGLISH</div>
+                      <div className="word studioWord">
+                        {currentCard
+                          ? capFirst(currentCard.word)
+                          : typeFilter !== 'all' && cards.length
+                            ? 'Không có thẻ thuộc loại từ này'
+                            : mode === 'learned'
+                              ? 'Chưa có thẻ đã thuộc'
+                              : mode === 'unlearned'
+                                ? 'Bạn đã thuộc hết bộ thẻ này'
+                                : 'Chưa có flashcard'}
+                      </div>
+                      {currentCard && (
+                        <>
+                          <div className="posBadge">
+                            {detectPOS(currentCard)
+                              .filter((t) => t !== 'other')
+                              .map((t) => (
+                                <span key={t} className="posTagWarm">
+                                  {POS_SHORT[t]}
+                                </span>
+                              ))}
+                          </div>
+                          {currentCard.meanings[0]?.phonetic && (
+                            <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
+                          )}
+                        </>
+                      )}
+                      <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem nghĩa</div>
+                    </>
+                  )}
+                </div>
+
+                <div className="face back studioFace">
+                  {reverseMode && currentCard ? (
+                    <>
+                      <div className="label">ENGLISH</div>
+                      <div className="word studioWord">{capFirst(currentCard.word)}</div>
+                      <div className="posBadge">
+                        {detectPOS(currentCard)
+                          .filter((t) => t !== 'other')
+                          .map((t) => (
+                            <span key={t} className="posTagWarm">
+                              {POS_SHORT[t]}
+                            </span>
+                          ))}
+                      </div>
+                      {currentCard.meanings[0]?.phonetic && (
+                        <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="label">TIẾNG VIỆT</div>
+                      <div className="meaningList">
+                        {currentCard?.meanings.map((m, idx) => (
+                          <div key={idx} className="meaningItem">
+                            {capFirst(m.text)}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Primary Card Controls */}
+            <div className="triControls">
+              <button type="button" className="triBtnOutline" onClick={previousCard}>
+                ← Trước
+              </button>
+              <button
+                type="button"
+                className="triBtnOutline triBtnUnlearned btnIconText centerBtn"
+                onClick={() => mark(false)}
+              >
+                <IconX size={16} />
+                <span>Chưa thuộc</span>
+                <span className="keyTag">[C]</span>
+              </button>
+              <button
+                type="button"
+                className="triBtnSolid btnIconText centerBtn"
+                onClick={() => mark(true)}
+              >
+                <IconCheck size={16} />
+                <span>Đã thuộc</span>
+                <span className="keyTagSolid">[V]</span>
+              </button>
+              <button type="button" className="triBtnSolid" onClick={nextCard}>
+                Tiếp →
+              </button>
+            </div>
+
+            <div className="kbdHint">
+              Phím tắt: <kbd>←</kbd> <kbd>→</kbd> chuyển thẻ · <kbd>Space</kbd> lật thẻ ·{' '}
+              <kbd>C</kbd> chưa thuộc · <kbd>V</kbd> đã thuộc · <kbd>R</kbd> đọc to ·{' '}
+              <kbd>A</kbd> tự động đọc
+            </div>
+
+            {/* Recently Studied Cards Strip */}
+            {recentCards.length > 0 && (
+              <div className="recentStrip">
+                <span className="recentLabel">Vừa xem gần đây:</span>
+                <div className="recentChips">
+                  {recentCards.map((rc) => (
+                    <button
+                      key={rc.id}
+                      type="button"
+                      className={`recentChip ${rc.learned ? 'ok' : ''}`}
+                      onClick={() => jumpToCard(rc.id)}
+                      title={rc.meanings.map((m) => capFirst(m.text)).join('; ')}
+                    >
+                      {capFirst(rc.word)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      )}
+
+      {/* ==================== TAB 2: LUYỆN TẬP (DICTATION + QUIZ) ==================== */}
+      {activeTab === 'practice' && (
+        <div className="pageShell">
+          <div className="practiceHeader">
+            <div>
+              <h1 className="pageTitle">Phòng luyện tập phản xạ</h1>
+              <p className="pageSub">
+                Luyện nghe chép chính tả từng từ chuẩn xác hoặc kiểm tra phản xạ trắc nghiệm 4 đáp
+                án.
+              </p>
+            </div>
+
+            <div className="practiceModeSwitch" role="tablist" aria-label="Chọn chế độ luyện tập">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={practiceMode === 'dictation'}
+                className={`practiceModeBtn ${practiceMode === 'dictation' ? 'active' : ''}`}
+                onClick={() => {
+                  stopSpeech();
+                  setPracticeMode('dictation');
+                }}
+              >
+                <IconHeadphones size={18} />
+                <div>
+                  <b>Nghe chép chính tả</b>
+                  <span>Nghe từng từ &amp; gõ lại chính xác</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={practiceMode === 'quiz'}
+                className={`practiceModeBtn ${practiceMode === 'quiz' ? 'active' : ''}`}
+                onClick={() => {
+                  stopSpeech();
+                  setPracticeMode('quiz');
+                }}
+              >
+                <IconQuiz size={18} />
+                <div>
+                  <b>Trắc nghiệm phản xạ</b>
+                  <span>Chọn nhanh nghĩa đúng (phím 1–4)</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {practiceMode === 'dictation' ? (
+            <DictationPractice
+              cards={cards}
+              isSpeaking={isSpeaking}
+              onSpeak={speak}
+              onMarkLearned={setCardLearnedById}
+              onMarkManyUnlearned={markManyUnlearned}
+            />
+          ) : (
+            <div className="dictWrap">
+              <div className="dictToolbar">
+                <div className="dictToolbarGroup">
+                  <span className="dictToolbarLabel">Nguồn từ:</span>
+                  <div className="segGroup">
+                    {(
+                      [
+                        ['unlearned', 'Chưa thuộc'],
+                        ['all', 'Tất cả'],
+                        ['learned', 'Đã thuộc'],
+                      ] as const
+                    ).map(([k, label]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        className={`segBtn ${quizPoolMode === k ? 'active' : ''}`}
+                        onClick={() => {
+                          setQuizPoolMode(k);
+                          const pool = cards.filter((c) =>
+                            k === 'all' ? true : k === 'learned' ? c.learned : !c.learned
+                          );
+                          buildQuiz(pool, quizSize, quizDir);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="dictToolbarGroup">
+                  <span className="dictToolbarLabel">Chiều hỏi:</span>
+                  <div className="segGroup">
+                    <button
+                      type="button"
+                      className={`segBtn ${quizDir === 'en-vi' ? 'active' : ''}`}
+                      onClick={() => {
+                        setQuizDir('en-vi');
+                        buildQuiz(undefined, quizSize, 'en-vi');
+                      }}
+                    >
+                      Anh → Việt
+                    </button>
+                    <button
+                      type="button"
+                      className={`segBtn ${quizDir === 'vi-en' ? 'active' : ''}`}
+                      onClick={() => {
+                        setQuizDir('vi-en');
+                        buildQuiz(undefined, quizSize, 'vi-en');
+                      }}
+                    >
+                      Việt → Anh
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dictToolbarGroup">
+                  <span className="dictToolbarLabel">Số câu:</span>
+                  <div className="segGroup">
+                    {([10, 20, 30] as const).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        className={`segBtn ${quizSize === n ? 'active' : ''}`}
+                        onClick={() => {
+                          setQuizSize(n);
+                          buildQuiz(undefined, n, quizDir);
+                        }}
+                      >
+                        {n} câu
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ghost small btnIconText"
+                  onClick={() => buildQuiz()}
+                >
+                  <IconRotateCcw size={15} />
+                  <span>Đổi đề mới</span>
                 </button>
               </div>
-            </form>
-          )}
 
-          {/* Recently Studied Cards Strip */}
-          {recentCards.length > 0 && (
-            <div className="recentStrip">
-              <span className="recentLabel">Vừa xem:</span>
-              <div className="recentChips">
-                {recentCards.map((rc) => (
-                  <button
-                    key={rc.id}
-                    type="button"
-                    className={`recentChip ${rc.learned ? 'ok' : ''}`}
-                    onClick={() => jumpToCard(rc.id)}
-                    title={rc.meanings.map((m) => capFirst(m.text)).join('; ')}
-                  >
-                    {capFirst(rc.word)}
-                  </button>
+              {quizState &&
+                (quizState.i >= quizState.questions.length ? (
+                  <div className="dictStageCard dictSummary">
+                    <div className="dictScoreBig">
+                      {quizState.score} / {quizState.questions.length}
+                    </div>
+                    <p className="dictSummarySub">
+                      Độ chính xác{' '}
+                      {Math.round((quizState.score / quizState.questions.length) * 100)}% · Trắc
+                      nghiệm phản xạ
+                    </p>
+
+                    {quizState.wrong.length > 0 ? (
+                      <div className="dictMissedBox">
+                        <div className="dictMissedTitle">
+                          Từ trả lời sai cần ôn lại ({quizState.wrong.length})
+                        </div>
+                        <div className="dictMissedList">
+                          {quizState.wrong.map((m) => (
+                            <div key={m.id} className="dictMissedRow">
+                              <div>
+                                <b>{capFirst(m.word)}</b>
+                                <span>{m.meanings.map((x) => capFirst(x.text)).join('; ')}</span>
+                              </div>
+                              <button
+                                type="button"
+                                className="spkBig"
+                                onClick={() => speak(m.word, false)}
+                              >
+                                <IconVolume size={15} />
+                                <span>Nghe</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="dictPerfectMsg">
+                        Tuyệt vời! Bạn đã trả lời chính xác toàn bộ câu hỏi trong lượt này.
+                      </p>
+                    )}
+
+                    <div className="formBtns" style={{ justifyContent: 'center', marginTop: 22 }}>
+                      {quizState.wrong.length > 0 && (
+                        <>
+                          <button
+                            type="button"
+                            className="soft btnIconText"
+                            onClick={() =>
+                              buildQuiz(
+                                quizState.wrong.length >= 4 ? quizState.wrong : undefined,
+                                quizSize,
+                                quizDir
+                              )
+                            }
+                          >
+                            <IconRotateCcw size={15} />
+                            <span>Làm đề mới</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="danger btnIconText"
+                            onClick={() => markManyUnlearned(quizState.wrong.map((w) => w.id))}
+                          >
+                            <IconX size={15} />
+                            <span>Đánh dấu chưa thuộc ({quizState.wrong.length})</span>
+                          </button>
+                        </>
+                      )}
+                      <button type="button" className="primary" onClick={() => buildQuiz()}>
+                        Làm lượt tiếp theo →
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  (() => {
+                    const q = quizState.questions[quizState.i];
+                    return (
+                      <div className="dictStageCard">
+                        <div className="dictStageTop">
+                          <span className="cardCountPill">
+                            Câu {quizState.i + 1} / {quizState.questions.length}
+                          </span>
+                          <div className="dictTopStats">
+                            <span>Điểm: {quizState.score}</span>
+                          </div>
+                        </div>
+
+                        <div className="quizStagePrompt">
+                          <div className="quizPromptMain">
+                            <span>{q.prompt}</span>
+                            {quizDir === 'en-vi' && (
+                              <button
+                                type="button"
+                                className={`speakBtn ${isSpeaking ? 'speaking' : ''}`}
+                                onClick={() => speak(q.card.word, false)}
+                                title="Phát âm (R)"
+                              >
+                                <IconVolume size={18} />
+                              </button>
+                            )}
+                          </div>
+                          {q.subPrompt && <div className="phonTag">{q.subPrompt}</div>}
+                        </div>
+
+                        <div className="quizGridOptions">
+                          {q.options.map((opt, idx) => {
+                            let cls = 'quizGridOpt';
+                            if (quizState.answered) {
+                              if (idx === q.correctIdx) cls += ' correct';
+                              else if (idx === quizState.selectedIdx) cls += ' wrong';
+                            }
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                className={cls}
+                                disabled={quizState.answered}
+                                onClick={() => handleQuizPick(idx)}
+                              >
+                                <span className="quizOptNum">{idx + 1}</span>
+                                <span className="quizOptText">{opt}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="kbdHint" style={{ marginTop: 18 }}>
+                          Mẹo: Nhấn phím <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> để chọn
+                          nhanh đáp án · nhấn <kbd>R</kbd> để nghe phát âm
+                        </div>
+                      </div>
+                    );
+                  })()
                 ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== TAB 3: DANH SÁCH TỪ (FILTERABLE LIBRARY) ==================== */}
+      {activeTab === 'library' && (
+        <div className="pageShell">
+          <section className="pagePanel">
+            <div className="pagePanelHead">
+              <div>
+                <h1 className="pageTitle">Danh sách từ vựng</h1>
+                <p className="pageSub">
+                  Hiển thị <b>{libData.arr.length}</b> / {stats.total} từ · Bấm vào từ bất kỳ để mở
+                  trên thẻ học hoặc nghe phát âm trực tiếp.
+                </p>
+              </div>
+              <button type="button" className="primary btnIconText" onClick={openAdd}>
+                <IconPlus size={16} />
+                <span>Thêm từ mới</span>
+              </button>
+            </div>
+
+            {/* Filter Row: Status + Search */}
+            <div className="libFilterRow">
+              <div className="segGroup">
+                <button
+                  type="button"
+                  className={`segBtn ${libStatus === 'all' ? 'active' : ''}`}
+                  onClick={() => setLibStatus('all')}
+                >
+                  Tất cả ({stats.total})
+                </button>
+                <button
+                  type="button"
+                  className={`segBtn ${libStatus === 'unlearned' ? 'active' : ''}`}
+                  onClick={() => setLibStatus('unlearned')}
+                >
+                  Chưa thuộc ({stats.remain})
+                </button>
+                <button
+                  type="button"
+                  className={`segBtn ${libStatus === 'learned' ? 'active' : ''}`}
+                  onClick={() => setLibStatus('learned')}
+                >
+                  Đã thuộc ({stats.learned})
+                </button>
+              </div>
+
+              <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
+                <IconSearch size={16} className="searchFieldIcon" />
+                <input
+                  value={libSearch}
+                  onChange={(e) => setLibSearch(e.target.value)}
+                  placeholder="Tìm từ tiếng Anh hoặc nghĩa tiếng Việt..."
+                />
               </div>
             </div>
-          )}
-        </main>
 
-        {/* RIGHT COLUMN: Circular Progress + Quiz Banner + Lookup & Manage */}
-        <aside className="rightCol" aria-label="Tiến độ và công cụ">
-          {/* Circular Progress Card */}
-          <div className="rightCard progressCard">
-            <h3 className="rightCardTitle">Tiến độ học tập</h3>
-            <div className="ringWrap">
-              <svg width="116" height="116" viewBox="0 0 116 116" aria-hidden="true">
-                <circle
-                  cx="58"
-                  cy="58"
-                  r={ringRadius}
-                  fill="none"
-                  stroke="var(--line-soft)"
-                  strokeWidth="9"
-                />
-                <circle
-                  cx="58"
-                  cy="58"
-                  r={ringRadius}
-                  fill="none"
-                  stroke="var(--teal)"
-                  strokeWidth="9"
-                  strokeLinecap="round"
-                  strokeDasharray={ringCircumference}
-                  strokeDashoffset={ringOffset}
-                  transform="rotate(-90 58 58)"
-                  style={{ transition: 'stroke-dashoffset 0.4s ease' }}
-                />
-              </svg>
-              <span className="ringText">{stats.pct}%</span>
-            </div>
-            <div className="ringSub">
-              {stats.learned} / {stats.total} đã thuộc
-            </div>
-            <div className="streakBadge">
-              <IconFlame size={15} className="flameIcon" />
-              <span>
-                Chuỗi {dailyDisplay.streak} ngày
-                {dailyDisplay.today > 0 ? ` · +${dailyDisplay.today}` : ''}
-              </span>
-            </div>
-          </div>
-
-          {/* Quiz Banner Card */}
-          <div className="quizBanner">
-            <div>
-              <div className="quizBannerTitle">Trắc nghiệm nhanh</div>
-              <div className="quizBannerSub">Kiểm tra 10 từ ngẫu nhiên</div>
-            </div>
-            <button type="button" className="quizBannerBtn" onClick={openQuiz}>
-              Bắt đầu
-            </button>
-          </div>
-
-          {/* Lookup & Manage Card */}
-          <div className="rightCard">
-            <h3 className="rightCardTitle">Tra cứu &amp; Quản lý</h3>
-            <div className="toolStack">
+            {/* POS Filter Chips */}
+            <div className="catChips">
               <button
                 type="button"
-                className="toolRowCard"
-                onClick={() => setActiveModal('grammar')}
+                className={`chip ${libPos === 'all' ? 'active' : ''}`}
+                onClick={() => setLibPos('all')}
               >
-                <div className="toolRowText">
-                  <b>Ngữ pháp &amp; IPA TOEIC</b>
-                  <span>12 thì, từ loại Part 5, liên từ &amp; 44 âm IPA</span>
-                </div>
-                <span className="openPill">Mở</span>
+                Tất cả từ loại <span className="chipN">{libData.statusBaseLen}</span>
               </button>
-
-              <button
-                type="button"
-                className="toolRowCard"
-                onClick={() => setActiveModal('irr')}
-              >
-                <div className="toolRowText">
-                  <b>Động từ bất quy tắc</b>
-                  <span>100 từ thông dụng &amp; 360 từ V1/V2/V3</span>
-                </div>
-                <span className="openPill">Mở</span>
-              </button>
-
-              <button
-                type="button"
-                className="toolRowCard"
-                onClick={() => {
-                  setCatFilter('all');
-                  setCatSearch('');
-                  setActiveModal('cat');
-                }}
-              >
-                <div className="toolRowText">
-                  <b>Theo từ loại</b>
-                  <span>Xem danh, động, tính, cụm từ</span>
-                </div>
-                <span className="openPill">Mở</span>
-              </button>
-
-              <button
-                type="button"
-                className="toolRowCard"
-                onClick={() => {
-                  setReviewMode('all');
-                  setReviewSearch('');
-                  setActiveModal('review');
-                }}
-              >
-                <div className="toolRowText">
-                  <b>Quản lý từ vựng</b>
-                  <span>Xem A-Z, sửa, gộp, xoá</span>
-                </div>
-                <span className="openPill">Mở</span>
-              </button>
+              {POS_LIST.map(([k, label]) => {
+                const n = libData.posCounts[k] || 0;
+                if (!n && libPos !== k) return null;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    className={`chip ${libPos === k ? 'active' : ''}`}
+                    onClick={() => setLibPos(k)}
+                  >
+                    {label} <span className="chipN">{n}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
-        </aside>
-      </div>
 
-      {/* Add / Edit Modal */}
+            {/* A-Z Jump Bar */}
+            <div className="azBar">
+              {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
+                <button
+                  key={L}
+                  type="button"
+                  className={libData.letters[L] ? '' : 'off'}
+                  onClick={() => jumpLetter('lib', L)}
+                >
+                  {L}
+                </button>
+              ))}
+            </div>
+
+            {/* Vocabulary List */}
+            <div className="libList">
+              {libData.arr.length === 0 ? (
+                <div className="empty">Không có từ vựng nào khớp với bộ lọc hiện tại.</div>
+              ) : (
+                (() => {
+                  let curL = '';
+                  return libData.arr.map((c) => {
+                    const L = firstLetter(c.word);
+                    const showH = L !== curL;
+                    if (showH) curL = L;
+                    const posTags = detectPOS(c).filter((t) => t !== 'other');
+                    return (
+                      <div key={c.id} className="libItemGroup">
+                        {showH && (
+                          <div
+                            className="letterHead"
+                            id={`lib-${L === '#' ? '0' : L}`}
+                            style={{ marginBottom: 8, marginTop: 6 }}
+                          >
+                            <span>{L}</span>
+                            <small>{libData.letters[L]} từ</small>
+                          </div>
+                        )}
+                        <div className={`item libItem ${c.learned ? 'learned' : ''}`}>
+                          <div
+                            className="itemInfo"
+                            onClick={() => jumpToCard(c.id)}
+                            title="Bấm để mở thẻ này trong mục Học thẻ"
+                          >
+                            <div className="libWordLine">
+                              <b className="itemWord">{capFirst(c.word)}</b>
+                              {posTags.map((t) => (
+                                <span key={t} className="libPosPill">
+                                  {POS_SHORT[t]}
+                                </span>
+                              ))}
+                              {c.meanings[0]?.phonetic && (
+                                <span className="libPhonetic">{c.meanings[0].phonetic}</span>
+                              )}
+                            </div>
+                            <span className="itemMeaning">
+                              {c.meanings.map((m) => capFirst(m.text)).join('; ')}
+                            </span>
+                          </div>
+
+                          <div className="libItemActions">
+                            <button
+                              type="button"
+                              className="spkBig"
+                              onClick={() => speak(c.word, false)}
+                              title="Phát âm to rõ"
+                            >
+                              <IconVolume size={16} />
+                              <span>Nghe</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={`iconActionBtn ${c.learned ? 'success' : 'soft'}`}
+                              onClick={() => setCardLearnedById(c.id, !c.learned)}
+                              title={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
+                              aria-label={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
+                            >
+                              {c.learned ? <IconCheck size={16} /> : <IconX size={16} />}
+                            </button>
+                            <button
+                              type="button"
+                              className="iconActionBtn soft"
+                              onClick={() => openEdit(c)}
+                              title="Sửa từ này"
+                              aria-label="Sửa từ này"
+                            >
+                              <IconEdit size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="iconActionBtn danger"
+                              onClick={() => deleteCard(c)}
+                              title="Xoá từ này"
+                              aria-label="Xoá từ này"
+                            >
+                              <IconTrash size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ==================== TAB 4: BẤT QUY TẮC (IRREGULAR VERBS) ==================== */}
+      {activeTab === 'irregular' && (
+        <div className="pageShell">
+          <IrregularView onSpeak={speak} />
+        </div>
+      )}
+
+      {/* ==================== MODAL: ADD / EDIT FLASHCARD ==================== */}
       {activeModal === 'edit' && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
           <div className="box">
@@ -1528,7 +1993,7 @@ export default function FlashcardApp({ username }: Props) {
             >
               <IconX size={20} />
             </button>
-            <h2>{editingId ? 'Sửa flashcard' : 'Thêm flashcard'}</h2>
+            <h2>{editingId ? 'Sửa flashcard' : 'Thêm flashcard mới'}</h2>
 
             <label>
               Từ / cụm từ tiếng Anh
@@ -1609,309 +2074,7 @@ export default function FlashcardApp({ username }: Props) {
         </div>
       )}
 
-      {/* Review / Manage Modal */}
-      {activeModal === 'review' && (
-        <div className="modal" onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
-          <div className="box wide">
-            <button
-              type="button"
-              className="closeX"
-              onClick={() => setActiveModal(null)}
-              aria-label="Đóng"
-            >
-              <IconX size={20} />
-            </button>
-            <h2 className="titleWithIcon">
-              <IconList size={22} />
-              <span>Quản lý Flashcard</span>
-            </h2>
-            <div className="tabs">
-              <button
-                type="button"
-                className={`tab ${reviewMode === 'all' ? 'active' : ''}`}
-                onClick={() => setReviewMode('all')}
-              >
-                Tất cả ({stats.total})
-              </button>
-              <button
-                type="button"
-                className={`tab ${reviewMode === 'learned' ? 'active' : ''}`}
-                onClick={() => setReviewMode('learned')}
-              >
-                Đã thuộc ({stats.learned})
-              </button>
-              <button
-                type="button"
-                className={`tab ${reviewMode === 'unlearned' ? 'active' : ''}`}
-                onClick={() => setReviewMode('unlearned')}
-              >
-                Chưa thuộc ({stats.remain})
-              </button>
-            </div>
-            <div className="searchFieldWrap">
-              <IconSearch size={16} className="searchFieldIcon" />
-              <input
-                value={reviewSearch}
-                onChange={(e) => setReviewSearch(e.target.value)}
-                placeholder="Tìm từ tiếng Anh hoặc nghĩa..."
-              />
-            </div>
-            <div className="azBar">
-              {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
-                <button
-                  key={L}
-                  type="button"
-                  className={reviewFiltered.letters[L] ? '' : 'off'}
-                  onClick={() => jumpLetter('rv', L)}
-                >
-                  {L}
-                </button>
-              ))}
-            </div>
-            <div className="list">
-              {reviewFiltered.arr.length === 0 ? (
-                <div className="empty">Không có flashcard phù hợp.</div>
-              ) : (
-                (() => {
-                  let curL = '';
-                  return reviewFiltered.arr.map((c) => {
-                    const L = firstLetter(c.word);
-                    const showH = L !== curL;
-                    if (showH) curL = L;
-                    return (
-                      <div key={c.id}>
-                        {showH && (
-                          <div
-                            className="letterHead"
-                            id={`rv-${L === '#' ? '0' : L}`}
-                            style={{ marginBottom: 8 }}
-                          >
-                            {L}
-                            <small>{reviewFiltered.letters[L]} từ</small>
-                          </div>
-                        )}
-                        <div
-                          className={`item ${c.learned ? 'learned' : ''} ${
-                            currentCard?.id === c.id ? 'current' : ''
-                          }`}
-                        >
-                          <div
-                            className="itemInfo"
-                            onClick={() => jumpToCard(c.id)}
-                            title="Bấm để mở thẻ này"
-                          >
-                            <b className="itemWord">
-                              {capFirst(c.word)}
-                              {c.meanings.length > 1 && (
-                                <span
-                                  style={{
-                                    color: 'var(--ink-faint)',
-                                    fontWeight: 400,
-                                    fontSize: 15,
-                                    marginLeft: 8,
-                                  }}
-                                >
-                                  ({c.meanings.length} nghĩa)
-                                </span>
-                              )}
-                            </b>
-                            <span className="itemMeaning">
-                              {c.meanings.map((m) => capFirst(m.text)).join('; ')}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="spkBig"
-                            onClick={() => speak(c.word, false)}
-                            title="Phát âm"
-                          >
-                            <IconVolume size={16} />
-                            <span>Nghe</span>
-                          </button>
-                          <button
-                            type="button"
-                            className={c.learned ? 'success' : 'soft'}
-                            onClick={() => toggleLearnedInList(c)}
-                            title={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
-                            aria-label={c.learned ? 'Đánh dấu chưa thuộc' : 'Đánh dấu đã thuộc'}
-                          >
-                            {c.learned ? <IconCheck size={16} /> : <IconX size={16} />}
-                          </button>
-                          <button
-                            type="button"
-                            className="soft"
-                            onClick={() => openEdit(c)}
-                            title="Sửa"
-                            aria-label="Sửa"
-                          >
-                            <IconEdit size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="danger"
-                            onClick={() => deleteCard(c)}
-                            title="Xoá"
-                            aria-label="Xoá"
-                          >
-                            <IconTrash size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quiz Modal */}
-      {activeModal === 'quiz' && quizState && (
-        <div
-          className="modal"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              stopSpeech();
-              setActiveModal(null);
-            }
-          }}
-        >
-          <div className="box">
-            <button
-              type="button"
-              className="closeX"
-              onClick={() => {
-                stopSpeech();
-                setActiveModal(null);
-              }}
-              aria-label="Đóng"
-            >
-              <IconX size={20} />
-            </button>
-            <h2 className="titleWithIcon">
-              <IconQuiz size={21} />
-              <span>Trắc nghiệm nhanh</span>
-            </h2>
-            {quizState.i >= quizState.questions.length ? (
-              <div style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 40,
-                    fontWeight: 700,
-                    margin: '10px 0',
-                  }}
-                >
-                  {quizState.score}/{quizState.questions.length}
-                </div>
-                <p className="note">Số câu trả lời đúng</p>
-                {quizState.wrong.length > 0 ? (
-                  <>
-                    <div className="note" style={{ margin: '16px 0 8px', textAlign: 'left' }}>
-                      <b>Từ cần ôn lại ({quizState.wrong.length})</b>
-                    </div>
-                    <div className="list" style={{ maxHeight: '32vh', textAlign: 'left' }}>
-                      {quizState.wrong.map((q) => (
-                        <div key={q.id} className="item">
-                          <div className="itemInfo" style={{ cursor: 'default' }}>
-                            <b className="itemWord">{capFirst(q.word)}</b>
-                            <span className="itemMeaning">
-                              {q.meanings.map((m) => capFirst(m.text)).join('; ')}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="soft"
-                            onClick={() => speak(q.word, false)}
-                            title="Phát âm"
-                            aria-label="Phát âm"
-                          >
-                            <IconVolume size={16} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="note" style={{ marginTop: 12 }}>
-                    Bạn đã trả lời đúng toàn bộ câu hỏi!
-                  </p>
-                )}
-                <div className="formBtns" style={{ justifyContent: 'center' }}>
-                  {quizState.wrong.length > 0 && (
-                    <button
-                      type="button"
-                      className="danger btnIconText"
-                      onClick={markWrongUnlearned}
-                    >
-                      <IconX size={15} />
-                      <span>Đánh dấu chưa thuộc</span>
-                    </button>
-                  )}
-                  <button type="button" className="soft" onClick={() => setActiveModal(null)}>
-                    Đóng
-                  </button>
-                  <button type="button" className="primary" onClick={openQuiz}>
-                    Làm lại
-                  </button>
-                </div>
-              </div>
-            ) : (
-              (() => {
-                const q = quizState.questions[quizState.i];
-                return (
-                  <>
-                    <div className="quizQ">
-                      <div className="note">
-                        Câu {quizState.i + 1} / {quizState.questions.length} · Điểm:{' '}
-                        {quizState.score}
-                      </div>
-                      <div className="qWord">
-                        {capFirst(q.card.word)}
-                        <button
-                          type="button"
-                          className={`speakBtn ${isSpeaking ? 'speaking' : ''}`}
-                          onClick={() => speak(q.card.word, false)}
-                          title="Phát âm (R)"
-                          aria-label="Phát âm"
-                        >
-                          <IconVolume size={16} />
-                        </button>
-                      </div>
-                      {q.card.meanings[0]?.phonetic && (
-                        <div className="phonTag">{q.card.meanings[0].phonetic}</div>
-                      )}
-                    </div>
-                    <div className="quizOptions">
-                      {q.options.map((opt, idx) => {
-                        let cls = 'quizOpt';
-                        if (quizState.answered) {
-                          if (idx === q.correctIdx) cls += ' correct';
-                          else if (idx === quizState.selectedIdx) cls += ' wrong';
-                        }
-                        return (
-                          <button
-                            key={idx}
-                            type="button"
-                            className={cls}
-                            disabled={quizState.answered}
-                            onClick={() => handleQuizPick(idx)}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })()
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Backup / Restore Modal */}
+      {/* ==================== MODAL: BACKUP / RESTORE JSON ==================== */}
       {activeModal === 'data' && (
         <div className="modal" onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
           <div className="box">
@@ -1928,8 +2091,8 @@ export default function FlashcardApp({ username }: Props) {
               <span>Sao lưu / phục hồi</span>
             </h2>
             <p className="note" style={{ marginBottom: 14 }}>
-              Tất cả tiến độ đã được tự động đồng bộ lên MongoDB cho tài khoản <b>{username}</b>.
-              Bạn cũng có thể tải file JSON hoặc nhập file sao lưu cũ.
+              Tất cả tiến độ học đã tự động lưu trên MongoDB cho tài khoản <b>{username}</b>. Bạn
+              cũng có thể tải file sao lưu JSON về máy hoặc nhập từ file cũ.
             </p>
             <div className="formBtns" style={{ justifyContent: 'flex-start' }}>
               <button type="button" className="soft btnIconText" onClick={exportData}>
@@ -1961,148 +2124,7 @@ export default function FlashcardApp({ username }: Props) {
         </div>
       )}
 
-      {/* Category Modal */}
-      {activeModal === 'cat' && (
-        <div className="modal" onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
-          <div className="box wide">
-            <button
-              type="button"
-              className="closeX"
-              onClick={() => setActiveModal(null)}
-              aria-label="Đóng"
-            >
-              <IconX size={20} />
-            </button>
-            <h2 className="titleWithIcon">
-              <IconLayers size={21} />
-              <span>Từ vựng theo từ loại</span>
-            </h2>
-            <div className="catChips">
-              <button
-                type="button"
-                className={`chip ${catFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setCatFilter('all')}
-              >
-                Tất cả <span className="chipN">{cards.length}</span>
-              </button>
-              {POS_LIST.map(([k, label]) => {
-                const n = catData.counts[k] || 0;
-                if (!n) return null;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    className={`chip ${catFilter === k ? 'active' : ''}`}
-                    onClick={() => setCatFilter(k)}
-                  >
-                    {label} <span className="chipN">{n}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="searchFieldWrap">
-              <IconSearch size={16} className="searchFieldIcon" />
-              <input
-                value={catSearch}
-                onChange={(e) => setCatSearch(e.target.value)}
-                placeholder="Tìm trong danh sách..."
-              />
-            </div>
-            <div className="azBar">
-              {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
-                <button
-                  key={L}
-                  type="button"
-                  className={catData.letters[L] ? '' : 'off'}
-                  onClick={() => jumpLetter('ct', L)}
-                >
-                  {L}
-                </button>
-              ))}
-            </div>
-            <div className="list">
-              {catData.arr.length === 0 ? (
-                <div className="empty">Không có từ phù hợp.</div>
-              ) : (
-                (() => {
-                  let curL = '';
-                  return catData.arr.map((c) => {
-                    const L = firstLetter(c.word);
-                    const showH = L !== curL;
-                    if (showH) curL = L;
-                    return (
-                      <div key={c.id}>
-                        {showH && (
-                          <div
-                            className="letterHead"
-                            id={`ct-${L === '#' ? '0' : L}`}
-                            style={{ marginBottom: 8 }}
-                          >
-                            {L}
-                            <small>{catData.letters[L]} từ</small>
-                          </div>
-                        )}
-                        <div className={`item ${c.learned ? 'learned' : ''}`}>
-                          <div
-                            className="itemInfo"
-                            onClick={() => jumpToCard(c.id)}
-                            title="Bấm để mở thẻ này"
-                          >
-                            <b className="itemWord">
-                              {capFirst(c.word)}{' '}
-                              <span
-                                style={{
-                                  color: 'var(--ink-faint)',
-                                  fontWeight: 400,
-                                  fontSize: 14,
-                                }}
-                              >
-                                {detectPOS(c)
-                                  .map((x) => POS_SHORT[x])
-                                  .join(' · ')}
-                              </span>
-                            </b>
-                            <span className="itemMeaning">
-                              {c.meanings.map((m) => capFirst(m.text)).join('; ')}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="spkBig"
-                            onClick={() => speak(c.word, false)}
-                            title="Phát âm"
-                          >
-                            <IconVolume size={16} />
-                            <span>Nghe</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Irregular Verbs Modal */}
-      {activeModal === 'irr' && (
-        <IrregularModal
-          onClose={() => setActiveModal(null)}
-          onSpeak={speak}
-          onToast={showToast}
-        />
-      )}
-
-      {/* TOEIC Grammar & IPA Reference Modal */}
-      {activeModal === 'grammar' && (
-        <GrammarModal
-          onClose={() => setActiveModal(null)}
-          onSpeak={(text) => speak(text, false)}
-        />
-      )}
-
+      {/* Top-right Toast */}
       <div
         role="status"
         aria-live="polite"

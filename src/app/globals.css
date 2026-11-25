@@ -2674,170 +2674,810 @@ kbd {
   color: var(--teal-deep);
 }
 
-/* Grammar & IPA Modal */
-.grammarScroll {
-  max-height: 64vh;
-  overflow: auto;
-  margin-top: 12px;
-  border: 1.5px solid var(--line-soft);
-  border-radius: 14px;
+/* ===== 4-Tab Creative Studio Architecture (Study · Practice · Library · Irregular) ===== */
+.topBarInner {
+  max-width: 1460px;
+  padding: 10px 26px;
+  gap: 16px;
 }
 
-.grammarTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
-}
-
-.grammarTable th {
-  position: sticky;
-  top: 0;
-  background: var(--gold-bg);
-  color: var(--ink);
-  text-align: left;
-  padding: 12px 14px;
-  font-size: 14px;
-}
-
-.grammarTable td {
-  padding: 12px 14px;
-  border-top: 1px solid var(--line-soft);
-  vertical-align: top;
-}
-
-.grammarTable tbody tr:nth-child(even) {
-  background: rgba(128, 128, 128, 0.04);
-}
-
-.gBold {
-  font-weight: 700;
-  color: var(--teal-deep);
-  white-space: nowrap;
-}
-
-.gMono {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--ink);
-}
-
-.gSpeakRow {
+.navTabs {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
+  background: var(--paper);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 13px;
+  padding: 4px;
+}
+
+.navTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  border-radius: 9px;
   border: none;
   background: transparent;
-  padding: 2px 6px;
-  border-radius: 8px;
-  color: var(--ink);
-  font-weight: 400;
+  color: var(--ink-soft);
   font-size: 14.5px;
-  text-align: left;
-  white-space: normal;
+  font-weight: 600;
 }
 
-.gSpeakRow:hover {
-  background: var(--teal-bg);
-  color: var(--teal-deep);
+.navTab:hover {
+  color: var(--ink);
+  background: rgba(128, 128, 128, 0.08);
 }
 
-.grammarGrid {
+.navTab.active {
+  background: var(--teal);
+  color: #fffdf7;
+  box-shadow: var(--shadow-sm);
+}
+
+.navTabCount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.14);
+}
+
+.navTab.active .navTabCount {
+  background: rgba(255, 253, 247, 0.22);
+  color: #fffdf7;
+}
+
+/* Study Studio 2-Column Balanced Grid */
+.studioGrid {
+  max-width: 1380px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 26px 56px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  max-height: 64vh;
-  overflow-y: auto;
-  margin-top: 12px;
+  grid-template-columns: 316px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
 }
 
-.grammarCard {
-  background: var(--paper);
-  border: 1.5px solid var(--line-soft);
-  border-radius: 14px;
-  padding: 16px 18px;
+.studioRail {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 14px;
+  position: sticky;
+  top: 78px;
 }
 
-.grammarCard h3 {
-  margin: 0;
+.railMasteryCard {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.railMasteryRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.railRingWrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.railRingPct {
+  position: absolute;
   font-family: var(--font-display);
-  font-size: 17px;
-  color: var(--teal-deep);
-}
-
-.gRow {
-  font-size: 14.5px;
-  line-height: 1.5;
+  font-size: 21px;
+  font-weight: 800;
   color: var(--ink);
 }
 
-.gTip {
-  margin-top: 4px;
+.railMasteryInfo {
+  min-width: 0;
+}
+
+.railMasteryTitle {
   font-size: 13px;
   font-weight: 600;
-  color: var(--gold);
-  background: var(--gold-bg);
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-.gExamples {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.ipaSection {
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.ipaSection h3 {
-  margin: 0 0 12px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  color: var(--teal-deep);
-}
-
-.ipaGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-.ipaTile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 10px 8px;
-  border-radius: 12px;
-  background: var(--paper);
-  border: 1.5px solid var(--line-soft);
-}
-
-.ipaTile:hover {
-  background: var(--teal-bg);
-  border-color: var(--teal);
-}
-
-.ipaSym {
-  font-family: var(--font-mono);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--teal-deep);
-}
-
-.ipaWord {
-  font-size: 13.5px;
   color: var(--ink-soft);
 }
 
-@media (max-width: 720px) {
-  .grammarGrid {
+.railMasteryNums {
+  font-family: var(--font-display);
+  font-size: 21px;
+  margin-top: 2px;
+  color: var(--ink);
+}
+
+.railMasteryNums b {
+  color: var(--teal);
+}
+
+.railMasteryRemain {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.railStreakBar {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.railSearch input {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 10px 14px 10px 38px;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.railSectionCap {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  color: var(--ink-faint);
+  padding: 4px 12px 2px;
+}
+
+.studioStage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dirPillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.studioCard {
+  margin: 18px 0 18px;
+}
+
+.studioInner,
+.studioFace {
+  min-height: 440px;
+}
+
+.studioFace {
+  padding: 52px 44px 40px;
+  border-radius: 22px;
+}
+
+.studioWord {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 4.6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.7px;
+}
+
+/* Shared Full-Page Shell for Practice, Library, Irregular */
+.pageShell {
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 26px 64px;
+}
+
+.pagePanel {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 20px;
+  padding: 26px 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pagePanelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.pageSub {
+  margin: 5px 0 0;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+
+.libFilterRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* Segmented controls */
+.segGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 11px;
+  padding: 3px;
+  flex-wrap: wrap;
+}
+
+.segBtn {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.segBtn:hover {
+  color: var(--ink);
+}
+
+.segBtn.active {
+  background: var(--teal);
+  color: #fffdf7;
+}
+
+/* Practice Hub Header & Mode Cards */
+.practiceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.practiceModeSwitch {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.practiceModeBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.practiceModeBtn b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.practiceModeBtn span {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.practiceModeBtn.active {
+  background: var(--teal-deep);
+  border-color: var(--teal-deep);
+  color: #fffdf7;
+}
+
+.practiceModeBtn.active span {
+  color: rgba(255, 253, 247, 0.8);
+}
+
+/* Dictation & Quiz Stage */
+.dictWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dictToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 12px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dictToolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dictToolbarLabel {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.dictStageCard {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line);
+  border-radius: 22px;
+  padding: 30px 34px 32px;
+  box-shadow: var(--shadow);
+  max-width: 880px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.dictStageTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dictTopStats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.dictCombo {
+  background: var(--gold-bg);
+  color: var(--gold);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+}
+
+.dictAudioCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 18px;
+}
+
+.dictSpeakerOrb {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fffdf7;
+  border: 4px solid var(--teal-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.dictSpeakerOrb:hover {
+  background: var(--teal-deep);
+}
+
+.dictAudioBtns {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dictMaskLine {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--ink);
+  margin: 8px 0 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dictCharCount {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--ink-faint);
+}
+
+.dictMeaningBox {
+  background: var(--paper);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 12px 18px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.dictMeaningVi {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.dictMeaningSub {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+.dictForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dictInput {
+  width: 100%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  padding: 15px 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 2px solid var(--line);
+}
+
+.dictInput.ok {
+  border-color: var(--teal);
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+}
+
+.dictInput.err {
+  border-color: var(--rust);
+  background: var(--rust-bg);
+  color: var(--rust);
+}
+
+.dictActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dictActionRow button {
+  min-width: 170px;
+  padding: 12px 20px;
+}
+
+.dictResultBanner {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.dictResultBanner.ok {
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+  border: 1px solid var(--teal);
+}
+
+.dictResultBanner.err {
+  background: var(--rust-bg);
+  color: var(--rust);
+  border: 1px solid var(--rust);
+}
+
+.dictSummary {
+  text-align: center;
+}
+
+.dictScoreBig {
+  font-family: var(--font-display);
+  font-size: 52px;
+  font-weight: 800;
+  color: var(--teal);
+  line-height: 1.1;
+}
+
+.dictSummarySub {
+  margin: 8px 0 18px;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+.dictPerfectMsg {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--teal-deep);
+  background: var(--teal-bg);
+  padding: 14px 18px;
+  border-radius: 12px;
+}
+
+.dictMissedBox {
+  text-align: left;
+  margin-top: 16px;
+  border: 1.5px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--paper);
+}
+
+.dictMissedTitle {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.dictMissedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dictMissedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+}
+
+.dictMissedRow b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+
+.dictMissedRow span {
+  display: block;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+
+/* Inline Practice Quiz Grid */
+.quizStagePrompt {
+  text-align: center;
+  margin: 14px 0 26px;
+}
+
+.quizPromptMain {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.6vw, 44px);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.quizGridOptions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.quizGridOpt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  text-align: left;
+  font-size: 16.5px;
+  font-weight: 600;
+  white-space: normal;
+}
+
+.quizGridOpt:hover:not(:disabled) {
+  border-color: var(--teal);
+}
+
+.quizGridOpt.correct {
+  background: var(--teal-bg);
+  border-color: var(--teal);
+  color: var(--teal-deep);
+}
+
+.quizGridOpt.wrong {
+  background: var(--rust-bg);
+  border-color: var(--rust);
+  color: var(--rust);
+}
+
+.quizOptNum {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.quizOptText {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Full-Page Vocabulary Library & Irregular Table */
+.libList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.libItemGroup {
+  content-visibility: auto;
+  contain-intrinsic-size: 88px;
+}
+
+.libItem {
+  background: var(--paper);
+  padding: 16px 20px;
+}
+
+.libWordLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.libPosPill {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+
+.libPhonetic {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.libItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.iconActionBtn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pageIrrWrap {
+  max-height: 70vh;
+}
+
+@media (max-width: 980px) {
+  .topBarInner {
+    padding: 12px 16px;
+  }
+  .navTabs {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: space-between;
+  }
+  .navTab {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 13.5px;
+  }
+  .studioGrid {
     grid-template-columns: 1fr;
+    padding: 16px 14px 48px;
+  }
+  .studioStage {
+    order: 1;
+  }
+  .studioRail {
+    order: 2;
+    position: static;
+  }
+  .studioInner,
+  .studioFace {
+    min-height: 320px;
+  }
+  .studioFace {
+    padding: 40px 24px 28px;
+  }
+  .pageShell {
+    padding: 16px 14px 52px;
+  }
+  .pagePanel {
+    padding: 18px 16px;
+  }
+  .dictStageCard {
+    padding: 22px 18px 24px;
+  }
+  .quizGridOptions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .triControls {
+    grid-template-columns: 1fr 1fr;
+  }
+  .libItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .libItemActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .userBadge {
+    display: none;
   }
 }
