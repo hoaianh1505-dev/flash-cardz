@@ -386,7 +386,7 @@ export default function AuthScreen({ onGuestEnter }: AuthScreenProps) {
                   onClick={onGuestEnter}
                   disabled={loading}
                 >
-                  Học ngay với Tài khoản khách (Không cần đăng nhập)
+                  Dùng Tài khoản khách (Không cần đăng nhập)
                 </button>
               </>
             )}
