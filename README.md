@@ -1,13 +1,17 @@
 # FlashcardX — Flashcard TOEIC (Next.js + MongoDB)
 
-Ứng dụng học từ vựng TOEIC bằng Flashcard hỗ trợ đăng nhập / đăng xuất / đăng ký, mỗi tài khoản sở hữu bộ thẻ và tiến độ học riêng trên MongoDB, sẵn sàng deploy lên Vercel.
+Ứng dụng học từ vựng TOEIC bằng Flashcard hỗ trợ **Tài khoản khách (không cần đăng nhập)** và **Tài khoản đồng bộ Cloud (MongoDB)**, sẵn sàng deploy lên Vercel.
 
-## Tính năng
-- **Xác thực tài khoản**: Đăng ký, đăng nhập, đăng xuất (JWT lưu trong HTTP-only Cookie, mật khẩu băm `bcryptjs`).
-- **Bộ thẻ riêng cho từng người dùng**:
-  - Tài khoản mới đăng ký tự động nhận bộ **1.000 từ vựng TOEIC cơ bản**.
-  - Tài khoản seed sẵn **`AnhPro`** giữ nguyên toàn bộ 2.071 thẻ và tiến độ đã thuộc/chưa thuộc từ file JSON.
-- **Đầy đủ tính năng Flashcard v4.0**: Lật thẻ 3D, phát âm (bình thường & chậm), tự động đọc, lọc theo trạng thái & từ loại, trộn thẻ, tìm nhanh, quản lý A–Z, trắc nghiệm 10 câu, bảng 360 động từ bất quy tắc, chuỗi ngày học, giao diện sáng/tối, sao lưu & phục hồi JSON.
+## Tính năng chính
+- **Tài khoản khách & Đồng bộ Cloud**: Học ngay không cần đăng nhập (lưu trên trình duyệt), hoặc đăng ký / đăng nhập (JWT HTTP-only Cookie + `bcryptjs`) để đồng bộ bộ thẻ, tiến độ và lịch sử học lên MongoDB.
+- **Bộ thẻ 1.000 từ TOEIC cơ bản**: Tự động cấp sẵn cho tài khoản mới đăng ký và chế độ Khách.
+- **Học thẻ thông minh**: Lật thẻ 3D, đảo chiều `EN → VI` / `VI → EN`, phát âm to rõ, gắn sao từ quan trọng, ghi chú cá nhân / câu ví dụ, phím tắt nhanh.
+- **Phòng luyện tập riêng**:
+  - **Nghe chép chính tả từng từ**: Nghe phát âm và gõ lại chính xác, có gợi ý từng chữ và thống kê từ nghe nhầm.
+  - **Trắc nghiệm phản xạ**: 4 đáp án (`Anh → Việt` / `Việt → Anh`), chọn nhanh bằng phím `1–4`.
+- **Danh sách từ phân trang API**: Lọc server-side theo trạng thái, từ loại, chữ cái `A–Z`, tìm kiếm và phân trang (`25 / 50 / 100` từ/trang).
+- **Bảng động từ bất quy tắc**: 100 từ thông dụng & 360 từ đầy đủ, lọc theo quy tắc (`AAA/ABA/ABB/ABC`), chế độ che tự dò và phát âm.
+- **Thống kê & Lịch sử luyện tập**: Đặt mục tiêu số từ mỗi ngày, theo dõi chuỗi ngày học, tổng hợp từ hay sai và lịch sử phiên luyện tập (`StudySession`).
 
 ## Cấu hình biến môi trường
 
@@ -22,7 +26,6 @@ JWT_SECRET=<chuoi-bi-mat-ngau-nhien-dai>
 
 ```bash
 npm install
-npm run seed   # Seed tài khoản AnhPro (mật khẩu mặc định: AnhPro123)
 npm run dev
 ```
 

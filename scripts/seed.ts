@@ -44,9 +44,12 @@ async function main() {
   await mongoose.connect(uri);
   console.log('Connected to MongoDB!');
 
-  const username = 'anhpro';
-  const displayName = 'AnhPro';
-  const password = process.env.SEED_PASSWORD || 'anhpro123';
+  const username = process.env.SEED_USERNAME?.trim();
+  const displayName = process.env.SEED_DISPLAY_NAME?.trim() || username || '';
+  const password = process.env.SEED_PASSWORD;
+  if (!username || !password) {
+    throw new Error('Please set SEED_USERNAME and SEED_PASSWORD in .env.local before running seed.');
+  }
   const usernameLower = username.toLowerCase();
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -59,13 +62,13 @@ async function main() {
       passwordHash,
       daily: { streak: 1, lastDate: '', todayCount: 0 },
     });
-    console.log(`Created user "${username}" (displayName: "${displayName}", password: ${password})`);
+    console.log(`Created user "${username}" (displayName: "${displayName}")`);
   } else {
     user.username = username;
     user.displayName = displayName;
     user.passwordHash = passwordHash;
     await user.save();
-    console.log(`Updated user "${username}" (displayName: "${displayName}", password: ${password})`);
+    console.log(`Updated user "${username}" (displayName: "${displayName}")`);
   }
 
   const seedPath = path.resolve(process.cwd(), 'src/data/anhpro-seed.json');
