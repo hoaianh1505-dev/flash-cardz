@@ -3,9 +3,26 @@
 import { useMemo, useState } from 'react';
 import irregularVerbs from '@/data/irregular-verbs.json';
 import { keyOf } from '@/lib/pos';
+import { IconBook, IconEyeOff, IconGauge, IconSearch, IconVolume, IconX } from './Icons';
 
 type IrrRow = [string, string, string, string];
-const IRR = irregularVerbs as IrrRow[];
+const IRR_ALL = irregularVerbs as IrrRow[];
+
+// 100 động từ bất quy tắc thông dụng nhất cho TOEIC & giao tiếp hàng ngày
+const TOP_100_SET = new Set([
+  'arise', 'awake', 'be', 'bear', 'beat', 'become', 'begin', 'bend', 'bet', 'bid',
+  'bind', 'bite', 'bleed', 'blow', 'break', 'bring', 'broadcast', 'build', 'burn', 'burst',
+  'buy', 'catch', 'choose', 'come', 'cost', 'cut', 'deal', 'dig', 'do', 'draw',
+  'dream', 'drink', 'drive', 'eat', 'fall', 'feed', 'feel', 'fight', 'find', 'fit',
+  'fly', 'forbid', 'forecast', 'forget', 'forgive', 'freeze', 'get', 'give', 'go', 'grow',
+  'hang', 'have', 'hear', 'hide', 'hit', 'hold', 'hurt', 'keep', 'know', 'lay',
+  'lead', 'learn', 'leave', 'lend', 'let', 'lie', 'light', 'lose', 'make', 'mean',
+  'meet', 'overcome', 'pay', 'prove', 'put', 'quit', 'read', 'ride', 'ring', 'rise',
+  'run', 'say', 'see', 'seek', 'sell', 'send', 'set', 'shake', 'shine', 'shoot',
+  'show', 'shut', 'sing', 'sink', 'sit', 'sleep', 'speak', 'spend', 'stand', 'take',
+]);
+
+const IRR_TOP_100 = IRR_ALL.filter((r) => TOP_100_SET.has(r[0].toLowerCase()));
 
 function irrPattern(r: IrrRow): 'AAA' | 'ABA' | 'ABB' | 'ABC' {
   const a = r[0];
@@ -29,24 +46,29 @@ interface Props {
 }
 
 export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
+  const [scope, setScope] = useState<'top100' | 'all360'>('top100');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'AAA' | 'ABA' | 'ABB' | 'ABC'>('all');
   const [slow, setSlow] = useState(false);
   const [hide, setHide] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
+  const dataset = scope === 'top100' ? IRR_TOP_100 : IRR_ALL;
+
   const patternCounts = useMemo(() => {
     const pc = { AAA: 0, ABA: 0, ABB: 0, ABC: 0 };
-    IRR.forEach((r) => pc[irrPattern(r)]++);
+    dataset.forEach((r) => pc[irrPattern(r)]++);
     return pc;
-  }, []);
+  }, [dataset]);
 
   const filtered = useMemo(() => {
     const q = keyOf(search);
-    return IRR.filter(
-      (r) => (filter === 'all' || irrPattern(r) === filter) && (!q || r.some((x) => keyOf(x).includes(q)))
+    return dataset.filter(
+      (r) =>
+        (filter === 'all' || irrPattern(r) === filter) &&
+        (!q || r.some((x) => keyOf(x).includes(q)))
     );
-  }, [search, filter]);
+  }, [dataset, search, filter]);
 
   const letterCounts = useMemo(() => {
     const cnt: Record<string, number> = {};
@@ -58,7 +80,7 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
   }, [filtered]);
 
   const chips: [typeof filter, string, number][] = [
-    ['all', 'Tất cả', IRR.length],
+    ['all', 'Tất cả', dataset.length],
     ['AAA', 'V1 = V2 = V3', patternCounts.AAA],
     ['ABA', 'V1 = V3', patternCounts.ABA],
     ['ABB', 'V2 = V3', patternCounts.ABB],
@@ -85,14 +107,51 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
     <div className="modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="box wide">
         <button type="button" className="closeX" onClick={onClose} aria-label="Đóng">
-          ×
+          <IconX size={20} />
         </button>
-        <h2>📚 {IRR.length} động từ bất quy tắc</h2>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔎 Tìm theo V1, V2, V3 hoặc nghĩa..."
-        />
+
+        <div className="modalTitleRow">
+          <h2 className="titleWithIcon">
+            <IconBook size={22} />
+            <span>Động từ bất quy tắc</span>
+          </h2>
+
+          <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'top100'}
+              className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
+              onClick={() => {
+                setScope('top100');
+                setRevealed({});
+              }}
+            >
+              100 từ thông dụng
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'all360'}
+              className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
+              onClick={() => {
+                setScope('all360');
+                setRevealed({});
+              }}
+            >
+              Đầy đủ {IRR_ALL.length} từ
+            </button>
+          </div>
+        </div>
+
+        <div className="searchFieldWrap">
+          <IconSearch size={16} className="searchFieldIcon" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo V1, V2, V3 hoặc nghĩa tiếng Việt..."
+          />
+        </div>
 
         <div className="catChips">
           {chips.map(([k, label, n]) => (
@@ -110,24 +169,26 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
         <div className="irrTools">
           <button
             type="button"
-            className={`chip ${slow ? 'active' : ''}`}
+            className={`chip btnIconText ${slow ? 'active' : ''}`}
             onClick={() => {
               const next = !slow;
               setSlow(next);
-              onToast(next ? '🐢 Đọc chậm: BẬT' : 'Đọc tốc độ thường');
+              onToast(next ? 'Đọc chậm: BẬT' : 'Đọc tốc độ thường');
             }}
           >
-            🐢 Đọc chậm
+            <IconGauge size={15} />
+            <span>Đọc chậm</span>
           </button>
           <button
             type="button"
-            className={`chip ${hide ? 'active' : ''}`}
+            className={`chip btnIconText ${hide ? 'active' : ''}`}
             onClick={() => {
               setHide((h) => !h);
               setRevealed({});
             }}
           >
-            🙈 Che V2 · V3 · Nghĩa để tự kiểm tra
+            <IconEyeOff size={15} />
+            <span>Che V2 · V3 · Nghĩa để tự kiểm tra</span>
           </button>
         </div>
 
@@ -148,7 +209,9 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
           <table className={`irrTable ${hide ? 'irrHide' : ''}`}>
             <thead>
               <tr>
-                <th title="Đọc cả hàng">🔊</th>
+                <th title="Đọc cả hàng" aria-label="Đọc cả hàng">
+                  <IconVolume size={16} />
+                </th>
                 <th>V1</th>
                 <th>V2</th>
                 <th>V3</th>
@@ -159,7 +222,7 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="empty">
-                    Không tìm thấy.
+                    Không tìm thấy động từ phù hợp.
                   </td>
                 </tr>
               ) : (
@@ -169,7 +232,7 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
                   if (showHeader) currentLetter = L;
                   return (
                     <RowGroup
-                      key={`${r[0]}-${idx}`}
+                      key={`${scope}-${r[0]}-${idx}`}
                       letter={showHeader ? L : null}
                       letterCount={letterCounts[L] || 0}
                       row={r}
@@ -186,7 +249,7 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
         </div>
 
         <div className="irrCount">
-          {filtered.length} / {IRR.length} động từ · bấm vào từng dạng để nghe phát âm
+          Hiển thị {filtered.length} / {dataset.length} động từ · bấm vào từng ô để nghe phát âm
         </div>
       </div>
     </div>
@@ -227,9 +290,9 @@ function RowGroup({
             className="spkBtn"
             onClick={onSpeakRow}
             title="Đọc cả hàng: V1 – V2 – V3"
-            aria-label="Đọc cả hàng"
+            aria-label={`Đọc ${row[0]}`}
           >
-            🔊
+            <IconVolume size={16} />
           </button>
         </td>
         <td className="cv0" onClick={() => onCellClick(0)}>

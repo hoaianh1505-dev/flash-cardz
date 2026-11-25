@@ -1493,27 +1493,170 @@ kbd {
   margin-top: 8px;
 }
 
-/* Toast */
+/* Toast — top-right corner */
 .toast {
   position: fixed;
-  bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
+  top: 20px;
+  right: 20px;
+  max-width: min(380px, calc(100vw - 32px));
   background: var(--ink);
   color: var(--paper);
-  padding: 11px 20px;
-  border-radius: 999px;
+  padding: 12px 18px;
+  border-radius: 12px;
   font-size: 14px;
+  font-weight: 600;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  z-index: 100;
+  transform: translateX(16px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
   box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toast.toast-success {
+  background: var(--teal-deep);
+  color: #fffdf7;
+  border-color: var(--teal);
+}
+
+.toast.toast-error {
+  background: var(--rust);
+  color: #fffdf7;
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
 .toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(0);
+}
+
+/* Shared AntiSlopUI icon/layout utilities */
+.btnIconText {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.centerBtn {
+  justify-content: center;
+}
+
+.titleWithIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-right: 40px;
+  margin-bottom: 14px;
+}
+
+.modalTitleRow h2 {
+  margin: 0;
+}
+
+.irrScopeTabs {
+  display: inline-flex;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.irrScopeBtn {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 13.5px;
+}
+
+.irrScopeBtn.active {
+  background: var(--teal);
+  color: #fff;
+}
+
+.searchFieldWrap,
+.searchBoxWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchBoxWrap {
+  flex: 1;
+  min-width: 170px;
+}
+
+.searchFieldWrap input,
+.searchBoxWrap input {
+  width: 100%;
+  padding-left: 38px;
+}
+
+.searchFieldIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.dailyLine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.flameIcon {
+  color: var(--gold);
+  flex: none;
+}
+
+.bottomMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bottomIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.closeX {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rowRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item button:not(.spkBig) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 600px) {

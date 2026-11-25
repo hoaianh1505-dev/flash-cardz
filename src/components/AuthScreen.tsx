@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AuthScreen() {
@@ -11,12 +11,31 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [previewFlipped, setPreviewFlipped] = useState(false);
 
+  // Top-right toast
+  const [toast, setToast] = useState<{ msg: string; type: 'error' | 'success' | 'info' }>({
+    msg: '',
+    type: 'info',
+  });
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const usernameRef = useRef<HTMLInputElement | null>(null);
+  const displayNameRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+  const confirmRef = useRef<HTMLInputElement | null>(null);
+
   const isRegister = tab === 'register';
+
+  const showToast = useCallback((msg: string, type: 'error' | 'success' | 'info' = 'error') => {
+    setToast({ msg, type });
+    setToastVisible(true);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastVisible(false), 3200);
+  }, []);
 
   useEffect(() => {
     const t = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -37,24 +56,39 @@ export default function AuthScreen() {
   function switchTab(next: 'login' | 'register') {
     if (next === tab) return;
     setTab(next);
-    setError('');
+    setToastVisible(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
 
     const trimmedUser = username.trim();
+    if (!trimmedUser) {
+      showToast('Vui lòng nhập tên đăng nhập.', 'error');
+      usernameRef.current?.focus();
+      return;
+    }
+    if (!password) {
+      passwordRef.current?.focus();
+      return;
+    }
+    if (isRegister && !confirmPassword) {
+      confirmRef.current?.focus();
+      return;
+    }
     if (trimmedUser.length < 3) {
-      setError('Tên đăng nhập cần ít nhất 3 ký tự.');
+      showToast('Tên đăng nhập cần ít nhất 3 ký tự.', 'error');
+      usernameRef.current?.focus();
       return;
     }
     if (password.length < 6) {
-      setError('Mật khẩu cần ít nhất 6 ký tự.');
+      showToast('Mật khẩu cần ít nhất 6 ký tự.', 'error');
+      passwordRef.current?.focus();
       return;
     }
     if (isRegister && password !== confirmPassword) {
-      setError('Mật khẩu nhập lại không khớp.');
+      showToast('Mật khẩu nhập lại không khớp.', 'error');
+      confirmRef.current?.focus();
       return;
     }
 
@@ -72,14 +106,18 @@ export default function AuthScreen() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error || 'Có lỗi xảy ra, vui lòng thử lại.');
+        showToast(data?.error || 'Có lỗi xảy ra, vui lòng thử lại.', 'error');
         setLoading(false);
         return;
       }
+      showToast(
+        isRegister ? 'Tạo tài khoản thành công!' : 'Đăng nhập thành công!',
+        'success'
+      );
       router.refresh();
       window.location.href = '/';
     } catch {
-      setError('Không thể kết nối máy chủ.');
+      showToast('Không thể kết nối máy chủ.', 'error');
       setLoading(false);
     }
   }
@@ -164,13 +202,13 @@ export default function AuthScreen() {
                 <path d="M11 5 6 9H3v6h3l5 4z" />
                 <path d="M15.5 8.5a5 5 0 0 1 0 7" />
               </svg>
-              <span>Phát âm chuẩn, đọc chậm và trắc nghiệm 10 câu</span>
+              <span>Phát âm to rõ, đọc chậm và trắc nghiệm 10 câu</span>
             </li>
             <li>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M3 6h18M3 12h18M3 18h12" />
               </svg>
-              <span>Bảng 360 động từ bất quy tắc và phím tắt học nhanh</span>
+              <span>Bảng 100 / 360 động từ bất quy tắc và phím tắt nhanh</span>
             </li>
           </ul>
         </section>
@@ -208,26 +246,27 @@ export default function AuthScreen() {
           </div>
 
           <form className="authForm" onSubmit={handleSubmit} noValidate>
-            {error && (
-              <div className="authError" role="alert">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 8v4M12 16h.01" />
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
-
             <div className="authField">
               <label htmlFor="auth-username">Tên đăng nhập</label>
               <input
+                ref={usernameRef}
                 id="auth-username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (isRegister && !displayName.trim()) {
+                      e.preventDefault();
+                      displayNameRef.current?.focus();
+                    } else if (!password) {
+                      e.preventDefault();
+                      passwordRef.current?.focus();
+                    }
+                  }
+                }}
                 placeholder="Ví dụ: anhpro"
                 autoComplete="username"
-                aria-invalid={Boolean(error)}
                 required
               />
             </div>
@@ -240,10 +279,17 @@ export default function AuthScreen() {
                     Tên hiển thị <span className="authOpt">(tuỳ chọn)</span>
                   </label>
                   <input
+                    ref={displayNameRef}
                     id="auth-displayname"
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !password) {
+                        e.preventDefault();
+                        passwordRef.current?.focus();
+                      }
+                    }}
                     placeholder="Ví dụ: AnhPro"
                     autoComplete="name"
                     tabIndex={isRegister ? 0 : -1}
@@ -256,13 +302,19 @@ export default function AuthScreen() {
               <label htmlFor="auth-password">Mật khẩu</label>
               <div className="authPassWrap">
                 <input
+                  ref={passwordRef}
                   id="auth-password"
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isRegister && !confirmPassword) {
+                      e.preventDefault();
+                      confirmRef.current?.focus();
+                    }
+                  }}
                   placeholder="Tối thiểu 6 ký tự"
                   autoComplete={isRegister ? 'new-password' : 'current-password'}
-                  aria-invalid={Boolean(error)}
                   required
                 />
                 <button
@@ -293,6 +345,7 @@ export default function AuthScreen() {
                 <div className="authField">
                   <label htmlFor="auth-confirm">Nhập lại mật khẩu</label>
                   <input
+                    ref={confirmRef}
                     id="auth-confirm"
                     type={showPass ? 'text' : 'password'}
                     value={confirmPassword}
@@ -335,6 +388,14 @@ export default function AuthScreen() {
             )}
           </p>
         </section>
+      </div>
+
+      <div
+        role="status"
+        aria-live="polite"
+        className={`toast toast-${toast.type} ${toastVisible ? 'show' : ''}`}
+      >
+        {toast.msg}
       </div>
     </main>
   );
