@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import { Flashcard } from '@/models/Flashcard';
 import { setSessionCookie } from '@/lib/auth';
+import { checkRateLimit, getClientIp, rateLimitResponse, sanitizeText } from '@/lib/security';
 import defaultToeic from '@/data/default-toeic.json';
 
 interface DefaultCardSeed {
@@ -14,10 +15,19 @@ interface DefaultCardSeed {
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`auth:register:${ip}`, 5, 15 * 60_000);
+    if (!rl.ok) {
+      return rateLimitResponse(
+        rl.retryAfterSec,
+        `Bạn đã tạo quá nhiều tài khoản liên tiếp. Vui lòng thử lại sau ${rl.retryAfterSec} giây.`
+      );
+    }
+
     const body = await req.json();
-    const rawUsername = String(body?.username ?? '').trim();
-    const rawDisplayName = String(body?.displayName ?? '').trim();
-    const password = String(body?.password ?? '');
+    const rawUsername = sanitizeText(body?.username, 32);
+    const rawDisplayName = sanitizeText(body?.displayName, 48);
+    const password = typeof body?.password === 'string' ? body.password : '';
 
     if (rawUsername.length < 3 || rawUsername.length > 32) {
       return NextResponse.json(
@@ -31,9 +41,9 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (password.length < 6) {
+    if (password.length < 6 || password.length > 128) {
       return NextResponse.json(
-        { error: 'Mật khẩu phải có ít nhất 6 ký tự.' },
+        { error: 'Mật khẩu phải từ 6 đến 128 ký tự.' },
         { status: 400 }
       );
     }
@@ -59,7 +69,6 @@ export async function POST(req: Request) {
       daily: { streak: 0, lastDate: '', todayCount: 0 },
     });
 
-    // Provision the user's personal default deck from the 1000 basic TOEIC words PDF
     const seedCards = defaultToeic as DefaultCardSeed[];
     const docs = seedCards.map((c, idx) => ({
       userId: user._id,
@@ -67,6 +76,8 @@ export async function POST(req: Request) {
       wordLower: c.word.toLowerCase(),
       meanings: c.meanings,
       learned: false,
+      starred: false,
+      note: '',
       sortOrder: idx + 1,
     }));
 

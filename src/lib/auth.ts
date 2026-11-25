@@ -5,7 +5,13 @@ export const SESSION_COOKIE = 'flashcardx_token';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 function getJwtSecret(): Uint8Array {
-  const secret = process.env.JWT_SECRET || 'flashcardx-dev-fallback-secret-change-me';
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 16) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET must be configured with at least 16 characters in production.');
+    }
+    return new TextEncoder().encode('flashcardx-dev-fallback-secret-change-me');
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -29,7 +35,9 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecret());
+    const { payload } = await jwtVerify(token, getJwtSecret(), {
+      algorithms: ['HS256'],
+    });
     if (typeof payload.userId === 'string' && typeof payload.username === 'string') {
       const displayName =
         typeof payload.displayName === 'string' && payload.displayName.trim()

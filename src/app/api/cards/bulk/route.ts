@@ -3,23 +3,34 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/mongodb';
 import { getSessionUser } from '@/lib/auth';
 import { Flashcard } from '@/models/Flashcard';
+import { checkRateLimit, getClientIp, rateLimitResponse, sanitizeText } from '@/lib/security';
+
+const MAX_IMPORT_CARDS = 5000;
 
 interface IncomingCard {
   word?: unknown;
   meaning?: unknown;
   meanings?: { text?: unknown; meaning?: unknown; type?: unknown; phonetic?: unknown }[];
   learned?: unknown;
+  starred?: unknown;
+  note?: unknown;
 }
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const rl = checkRateLimit(`cards:bulk:${ip}`, 10, 5 * 60_000);
+    if (!rl.ok) {
+      return rateLimitResponse(rl.retryAfterSec);
+    }
+
     const session = await getSessionUser();
     if (!session) {
       return NextResponse.json({ error: 'Chưa đăng nhập.' }, { status: 401 });
     }
 
     const body = await req.json();
-    const action = String(body?.action ?? '');
+    const action = typeof body?.action === 'string' ? body.action : '';
     await connectDB();
     const userId = new mongoose.Types.ObjectId(session.userId);
 
@@ -30,7 +41,9 @@ export async function POST(req: Request) {
 
     if (action === 'mark-unlearned') {
       const ids = Array.isArray(body?.ids)
-        ? body.ids.filter((x: unknown) => typeof x === 'string' && mongoose.Types.ObjectId.isValid(x))
+        ? body.ids
+            .slice(0, 500)
+            .filter((x: unknown) => typeof x === 'string' && mongoose.Types.ObjectId.isValid(x))
         : [];
       if (ids.length) {
         await Flashcard.updateMany(
@@ -46,20 +59,30 @@ export async function POST(req: Request) {
       if (!Array.isArray(incoming) || !incoming.length) {
         return NextResponse.json({ error: 'File JSON không có dữ liệu hợp lệ.' }, { status: 400 });
       }
+      if (incoming.length > MAX_IMPORT_CARDS) {
+        return NextResponse.json(
+          { error: `Tối đa ${MAX_IMPORT_CARDS} thẻ trong một lần nhập.` },
+          { status: 400 }
+        );
+      }
 
       const docs = (incoming as IncomingCard[])
         .map((c, idx) => {
-          const word = String(c?.word ?? '').trim();
+          const word = sanitizeText(c?.word, 120);
+          const note = sanitizeText(c?.note, 400);
           const meanings = Array.isArray(c?.meanings)
             ? c.meanings
+                .slice(0, 12)
                 .map((m) => ({
-                  text: String(m?.text ?? m?.meaning ?? '').trim(),
-                  type: String(m?.type ?? '').trim(),
-                  phonetic: String(m?.phonetic ?? '').trim(),
+                  text: sanitizeText(m?.text ?? m?.meaning, 300),
+                  type: sanitizeText(m?.type, 40),
+                  phonetic: sanitizeText(m?.phonetic, 80),
                 }))
                 .filter((m) => m.text.length > 0)
             : c?.meaning
-              ? [{ text: String(c.meaning).trim(), type: '', phonetic: '' }]
+              ? [{ text: sanitizeText(c.meaning, 300), type: '', phonetic: '' }].filter(
+                  (m) => m.text.length > 0
+                )
               : [];
           return {
             userId,
@@ -67,6 +90,8 @@ export async function POST(req: Request) {
             wordLower: word.toLowerCase(),
             meanings,
             learned: !!c?.learned,
+            starred: !!c?.starred,
+            note,
             sortOrder: idx + 1,
           };
         })
@@ -90,6 +115,8 @@ export async function POST(req: Request) {
             ...(m.phonetic ? { phonetic: m.phonetic } : {}),
           })),
           learned: !!doc.learned,
+          starred: !!doc.starred,
+          note: doc.note || '',
         })),
       });
     }
