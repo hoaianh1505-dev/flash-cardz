@@ -5,6 +5,7 @@ import defaultToeic from '@/data/default-toeic.json';
 import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/pos';
 import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
+import PlaneShooterGame from './PlaneShooterGame';
 import Toast, { ToastType } from './Toast';
 import {
   IconBarChart,
@@ -22,6 +23,7 @@ import {
   IconMenu,
   IconMoon,
   IconNote,
+  IconPlane,
   IconPlus,
   IconQuiz,
   IconRepeat,
@@ -93,7 +95,7 @@ interface QuizState {
 }
 
 type MainTab = 'study' | 'practice' | 'library' | 'irregular' | 'stats';
-type PracticeSubTab = 'dictation' | 'quiz';
+type PracticeSubTab = 'dictation' | 'quiz' | 'plane';
 
 const GUEST_CARDS_KEY = 'flashcardx_guest_cards_v1';
 const GUEST_DAILY_KEY = 'flashcardx_guest_daily_v1';
@@ -327,7 +329,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         if (p.activeTab && ['study', 'practice', 'library', 'irregular', 'stats'].includes(p.activeTab)) {
           setActiveTab(p.activeTab);
         }
-        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz') {
+        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz' || p.practiceMode === 'plane') {
           setPracticeMode(p.practiceMode);
         }
         if (p.mode && ['all', 'unlearned', 'learned', 'starred'].includes(p.mode)) {
@@ -2253,6 +2255,22 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                       <span>Chọn nhanh 4 đáp án (phím 1–4)</span>
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={practiceMode === 'plane'}
+                    className={`practiceModeBtn ${practiceMode === 'plane' ? 'active' : ''}`}
+                    onClick={() => {
+                      stopSpeech();
+                      setPracticeMode('plane');
+                    }}
+                  >
+                    <IconPlane size={18} />
+                    <div>
+                      <b>Bắn máy bay từ vựng</b>
+                      <span>Hạ máy bay &amp; đua Top điểm</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -2264,6 +2282,13 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                   onMarkLearned={setCardLearnedById}
                   onMarkManyUnlearned={markManyUnlearned}
                   onSessionComplete={recordPracticeSession}
+                />
+              ) : practiceMode === 'plane' ? (
+                <PlaneShooterGame
+                  cards={cards}
+                  isGuest={isGuest}
+                  onSpeak={speak}
+                  onToast={showToast}
                 />
               ) : (
                 <div className="dictWrap">

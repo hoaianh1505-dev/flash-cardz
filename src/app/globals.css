@@ -5108,3 +5108,426 @@ body {
     display: none !important;
   }
 }
+
+
+/* ===== Plane Shooter Vocabulary Game (Eye-Care Tactical Radar Theme) ===== */
+.planeGameWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gameBestPill {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  background: var(--gold-bg);
+  border: 1px solid var(--line);
+  padding: 6px 13px;
+  border-radius: 999px;
+}
+
+.gameBestPill b {
+  color: var(--gold);
+  font-family: var(--font-mono);
+}
+
+.planeLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 18px;
+  align-items: start;
+}
+
+.planeArenaCard {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.planeHud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: #172329;
+  color: #e2ece8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.planeHudStat {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.planeHudStat span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  color: #8ba3ad;
+}
+
+.planeHudStat b {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: #79d8b7;
+}
+
+.planeHudLives {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.lifeDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.lifeDot.on {
+  background: #e26d56;
+  border-color: #f49a88;
+}
+
+.planeTargetBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: #20323a;
+  color: #f0f5f2;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.planeTargetLabel {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.6px;
+  color: #9cb4be;
+}
+
+.planeTargetWord {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: #f4d382;
+}
+
+.planeSpeakMini {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f0f5f2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planeSky {
+  position: relative;
+  height: 460px;
+  background: #121c22;
+  overflow: hidden;
+  user-select: none;
+}
+
+.planeRadarGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(121, 216, 183, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(121, 216, 183, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.planeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(15, 23, 28, 0.84);
+  color: #eef3f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 10px;
+}
+
+.planeOverlay h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+}
+
+.planeOverlay p {
+  margin: 0 0 8px;
+  max-width: 42ch;
+  font-size: 14.5px;
+  color: #b7c8ce;
+}
+
+.planeHeroIcon {
+  width: 66px;
+  height: 66px;
+  border-radius: 18px;
+  background: #234d42;
+  color: #8ee0c6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.newRecordTag {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #f4d382;
+  color: #262112;
+}
+
+.planeOverScore {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 800;
+  color: #79d8b7;
+  line-height: 1.1;
+}
+
+.enemyPlane {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1.5px solid rgba(121, 216, 183, 0.28);
+  border-radius: 12px;
+  background: rgba(24, 38, 46, 0.92);
+  color: #eef4f1;
+  max-width: 190px;
+  white-space: normal;
+  text-align: center;
+  cursor: default;
+  z-index: 4;
+}
+
+.enemyPlane.clickable {
+  cursor: pointer;
+}
+
+.enemyPlane.clickable:hover {
+  border-color: #79d8b7;
+  background: #1f3942;
+}
+
+.enemyPlaneBody {
+  color: #e68a6f;
+  display: inline-flex;
+}
+
+.enemyPlaneTag b {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: #f3f7f5;
+}
+
+.enemyPlaneTag small {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #f4d382;
+}
+
+.planeLaser {
+  position: absolute;
+  width: 4px;
+  transform: translateX(-50%);
+  background: #79d8b7;
+  border-radius: 999px;
+  box-shadow: 0 0 12px #79d8b7;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.planeBoom {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: #f4d382;
+  z-index: 6;
+  pointer-events: none;
+  animation: boomPop 0.6s ease forwards;
+}
+
+@keyframes boomPop {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -110%) scale(1.25);
+  }
+}
+
+.playerShip {
+  position: absolute;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #234d42;
+  border: 2px solid #79d8b7;
+  color: #b2f0da;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 0.16s ease-out;
+  z-index: 6;
+}
+
+.planeTypeBar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #172329;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.planeTypeBar input {
+  flex: 1;
+  background: #0f171c;
+  color: #f0f5f2;
+  border-color: #2f4550;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 16px;
+}
+
+/* Leaderboard Card */
+.planeBoardCard {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.planeBoardTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.planeBoardSub {
+  margin: 4px 0 14px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.planeBoardList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planeBoardRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+}
+
+.rankNum {
+  width: 28px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.rankNum.top {
+  color: var(--gold);
+}
+
+.rankInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.rankInfo b {
+  display: block;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rankInfo span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.rankScore {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--teal);
+}
+
+@media (max-width: 1024px) {
+  .planeLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .planeSky {
+    height: 390px;
+  }
+  .enemyPlane {
+    max-width: 125px;
+    padding: 5px 7px;
+  }
+  .enemyPlaneTag b {
+    font-size: 12px;
+  }
+  .planeTargetWord {
+    font-size: 18px;
+  }
+  .planeHud {
+    padding: 10px 12px;
+  }
+  .planeHudStat b {
+    font-size: 16px;
+  }
+}
