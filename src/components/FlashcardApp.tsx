@@ -258,7 +258,7 @@ export default function FlashcardApp({ username }: Props) {
       u.lang = 'en-US';
       u.volume = 1.0;
       if (enVoiceRef.current) u.voice = enVoiceRef.current;
-      u.rate = slow ? 0.62 : 0.96;
+      u.rate = slow ? 0.5 : 0.96;
       u.onstart = () => {
         if (my === speakSeqRef.current) setIsSpeaking(true);
       };
@@ -282,7 +282,7 @@ export default function FlashcardApp({ username }: Props) {
       setIsSpeaking(true);
 
       const isSlow = slow === true;
-      const cacheKey = `${cleaned.toLowerCase()}|${isSlow ? '1' : '0'}`;
+      const cacheKey = cleaned.toLowerCase();
 
       try {
         const AudioCtx =
@@ -303,9 +303,7 @@ export default function FlashcardApp({ username }: Props) {
 
         let audioBuf = audioBufferCacheRef.current.get(cacheKey);
         if (!audioBuf) {
-          const res = await fetch(
-            `/api/tts?q=${encodeURIComponent(cleaned)}&slow=${isSlow ? '1' : '0'}`
-          );
+          const res = await fetch(`/api/tts?q=${encodeURIComponent(cleaned)}`);
           if (!res.ok) throw new Error('TTS HTTP error');
           const arrBuf = await res.arrayBuffer();
           audioBuf = await ctx.decodeAudioData(arrBuf);
@@ -320,17 +318,19 @@ export default function FlashcardApp({ username }: Props) {
 
         const source = ctx.createBufferSource();
         source.buffer = audioBuf;
+        // True 2x slower (0.5x) when slow mode is requested
+        source.playbackRate.value = isSlow ? 0.55 : 1.0;
 
-        // Boost volume 2.2x while preventing distortion via limiter/compressor
+        // Boost volume 3.4x with compressor limiter for loud, crisp audio without clipping
         const gain = ctx.createGain();
-        gain.gain.value = 2.2;
+        gain.gain.value = 3.4;
 
         const compressor = ctx.createDynamicsCompressor();
-        compressor.threshold.value = -8;
-        compressor.knee.value = 10;
-        compressor.ratio.value = 6;
-        compressor.attack.value = 0.003;
-        compressor.release.value = 0.12;
+        compressor.threshold.value = -12;
+        compressor.knee.value = 8;
+        compressor.ratio.value = 8;
+        compressor.attack.value = 0.002;
+        compressor.release.value = 0.1;
 
         source.connect(gain);
         gain.connect(compressor);
@@ -1133,12 +1133,24 @@ export default function FlashcardApp({ username }: Props) {
               className={isSpeaking ? 'speaking' : ''}
               onClick={(e) => {
                 e.stopPropagation();
-                speakCurrent();
+                speakCurrent(false);
               }}
-              title="Phát âm to rõ (R) · Shift+R đọc chậm"
+              title="Phát âm to rõ (R)"
               aria-label="Phát âm"
             >
-              <IconVolume size={19} />
+              <IconVolume size={20} />
+            </button>
+            <button
+              type="button"
+              className="slowToolBtn"
+              onClick={(e) => {
+                e.stopPropagation();
+                speakCurrent(true);
+              }}
+              title="Đọc chậm gấp đôi 0.5× (Shift+R)"
+              aria-label="Đọc chậm 0.5x"
+            >
+              0.5×
             </button>
             <button
               type="button"
@@ -1150,6 +1162,18 @@ export default function FlashcardApp({ username }: Props) {
               aria-label="Sửa từ và nghĩa"
             >
               <IconEdit size={18} />
+            </button>
+            <button
+              type="button"
+              className="deleteToolBtn"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteCard(currentCard);
+              }}
+              title="Xoá thẻ này"
+              aria-label="Xoá thẻ này"
+            >
+              <IconTrash size={18} />
             </button>
           </div>
         )}

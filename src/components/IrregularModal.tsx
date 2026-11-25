@@ -173,11 +173,11 @@ export default function IrregularModal({ onClose, onSpeak, onToast }: Props) {
             onClick={() => {
               const next = !slow;
               setSlow(next);
-              onToast(next ? 'Đọc chậm: BẬT' : 'Đọc tốc độ thường');
+              onToast(next ? 'Đọc chậm 0.5×: BẬT' : 'Đọc tốc độ thường');
             }}
           >
             <IconGauge size={15} />
-            <span>Đọc chậm</span>
+            <span>Đọc chậm 0.5×</span>
           </button>
           <button
             type="button"
