@@ -4977,3 +4977,26 @@ kbd {
     padding: 10px 4px;
   }
 }
+
+
+/* Touch-friendly swipeable Toast enhancements */
+.toast {
+  touch-action: pan-x pan-y;
+  user-select: none;
+}
+
+@media (max-width: 860px) {
+  .toast {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    left: 12px;
+    right: 12px;
+    padding: 14px 46px 17px 14px;
+  }
+  .toastClose {
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+  }
+}

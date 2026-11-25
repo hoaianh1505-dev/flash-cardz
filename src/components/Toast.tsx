@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState } from 'react';
+
 export type ToastType = 'info' | 'success' | 'error' | 'warning';
 
 interface ToastProps {
@@ -19,11 +21,57 @@ export default function Toast({
   durationMs = 2600,
   onClose,
 }: ToastProps) {
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) return;
+    startRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!startRef.current || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - startRef.current.x;
+    const dy = e.touches[0].clientY - startRef.current.y;
+    // Allow swiping right (dx > 0) or swiping up (dy < 0)
+    setDragOffset({
+      x: dx > 0 ? dx : 0,
+      y: dy < 0 ? dy : 0,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!startRef.current) return;
+    const shouldDismiss = dragOffset.x > 64 || dragOffset.y < -36;
+    startRef.current = null;
+    setDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+    if (shouldDismiss) {
+      onClose();
+    }
+  };
+
+  const dragStyle =
+    dragging && (dragOffset.x !== 0 || dragOffset.y !== 0)
+      ? {
+          transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)`,
+          opacity: Math.max(0.25, 1 - Math.max(dragOffset.x / 180, -dragOffset.y / 90)),
+          transition: 'none',
+        }
+      : undefined;
+
   return (
     <div
       role="status"
       aria-live="polite"
       className={`toast toast-${type} ${visible ? 'show' : ''}`}
+      style={dragStyle}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       <span className={`toastBadge toastBadge-${type}`} aria-hidden="true">
         {type === 'success' && (
@@ -58,8 +106,9 @@ export default function Toast({
         className="toastClose"
         onClick={onClose}
         aria-label="Đóng thông báo"
+        title="Đóng thông báo"
       >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
