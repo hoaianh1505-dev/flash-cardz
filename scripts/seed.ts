@@ -44,22 +44,28 @@ async function main() {
   await mongoose.connect(uri);
   console.log('Connected to MongoDB!');
 
-  const username = 'AnhPro';
-  const password = process.env.SEED_PASSWORD || 'AnhPro123';
+  const username = 'anhpro';
+  const displayName = 'AnhPro';
+  const password = process.env.SEED_PASSWORD || 'anhpro123';
   const usernameLower = username.toLowerCase();
+  const passwordHash = await bcrypt.hash(password, 10);
 
   let user = await User.findOne({ usernameLower });
   if (!user) {
-    const passwordHash = await bcrypt.hash(password, 10);
     user = await User.create({
       username,
       usernameLower,
+      displayName,
       passwordHash,
       daily: { streak: 1, lastDate: '', todayCount: 0 },
     });
-    console.log(`Created user "${username}" (password: ${password})`);
+    console.log(`Created user "${username}" (displayName: "${displayName}", password: ${password})`);
   } else {
-    console.log(`User "${username}" already exists (id: ${user._id})`);
+    user.username = username;
+    user.displayName = displayName;
+    user.passwordHash = passwordHash;
+    await user.save();
+    console.log(`Updated user "${username}" (displayName: "${displayName}", password: ${password})`);
   }
 
   const seedPath = path.resolve(process.cwd(), 'src/data/anhpro-seed.json');

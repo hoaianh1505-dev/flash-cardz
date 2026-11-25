@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const rawUsername = String(body?.username ?? '').trim();
+    const rawDisplayName = String(body?.displayName ?? '').trim();
     const password = String(body?.password ?? '');
 
     if (rawUsername.length < 3 || rawUsername.length > 32) {
@@ -49,9 +50,11 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const displayName = rawDisplayName || rawUsername;
     const user = await User.create({
       username: rawUsername,
       usernameLower,
+      displayName,
       passwordHash,
       daily: { streak: 0, lastDate: '', todayCount: 0 },
     });
@@ -74,6 +77,7 @@ export async function POST(req: Request) {
     await setSessionCookie({
       userId: String(user._id),
       username: user.username,
+      displayName,
     });
 
     return NextResponse.json(
@@ -81,6 +85,7 @@ export async function POST(req: Request) {
         user: {
           id: String(user._id),
           username: user.username,
+          displayName,
           daily: user.daily,
         },
         seededCards: docs.length,

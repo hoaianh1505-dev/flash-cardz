@@ -9,6 +9,7 @@ export interface IDailyStats {
 export interface IUser extends Document {
   username: string;
   usernameLower: string;
+  displayName: string;
   passwordHash: string;
   daily: IDailyStats;
   createdAt: Date;
@@ -28,6 +29,7 @@ const UserSchema = new Schema<IUser>(
   {
     username: { type: String, required: true, trim: true },
     usernameLower: { type: String, required: true, unique: true, lowercase: true, index: true },
+    displayName: { type: String, trim: true, default: '' },
     passwordHash: { type: String, required: true },
     daily: { type: DailyStatsSchema, default: () => ({ streak: 0, lastDate: '', todayCount: 0 }) },
   },

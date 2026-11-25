@@ -9,5 +9,5 @@ export default async function HomePage() {
   if (!session) {
     return <AuthScreen />;
   }
-  return <FlashcardApp username={session.username} />;
+  return <FlashcardApp username={session.displayName} />;
 }

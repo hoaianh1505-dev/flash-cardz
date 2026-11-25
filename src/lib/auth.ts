@@ -12,10 +12,15 @@ function getJwtSecret(): Uint8Array {
 export interface SessionPayload {
   userId: string;
   username: string;
+  displayName: string;
 }
 
 export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ userId: payload.userId, username: payload.username })
+  return new SignJWT({
+    userId: payload.userId,
+    username: payload.username,
+    displayName: payload.displayName,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_MAX_AGE}s`)
@@ -26,7 +31,11 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   try {
     const { payload } = await jwtVerify(token, getJwtSecret());
     if (typeof payload.userId === 'string' && typeof payload.username === 'string') {
-      return { userId: payload.userId, username: payload.username };
+      const displayName =
+        typeof payload.displayName === 'string' && payload.displayName.trim()
+          ? payload.displayName
+          : payload.username;
+      return { userId: payload.userId, username: payload.username, displayName };
     }
     return null;
   } catch {

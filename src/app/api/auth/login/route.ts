@@ -35,15 +35,19 @@ export async function POST(req: Request) {
       );
     }
 
+    const displayName = user.displayName?.trim() || user.username;
+
     await setSessionCookie({
       userId: String(user._id),
       username: user.username,
+      displayName,
     });
 
     return NextResponse.json({
       user: {
         id: String(user._id),
         username: user.username,
+        displayName,
         daily: user.daily,
       },
     });

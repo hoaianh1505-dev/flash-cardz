@@ -12,7 +12,7 @@ export async function GET() {
 
     await connectDB();
     const user = await User.findById(session.userId)
-      .select('username daily')
+      .select('username displayName daily')
       .lean();
 
     if (!user) {
@@ -23,6 +23,7 @@ export async function GET() {
       user: {
         id: String(user._id),
         username: user.username,
+        displayName: user.displayName?.trim() || user.username,
         daily: user.daily || { streak: 0, lastDate: '', todayCount: 0 },
       },
     });
