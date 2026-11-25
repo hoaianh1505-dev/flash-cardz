@@ -265,7 +265,7 @@ export default function AuthScreen() {
                     }
                   }
                 }}
-                placeholder="Ví dụ: anhpro"
+                placeholder="Nhập tên đăng nhập (vd: nguyenvana)"
                 autoComplete="username"
                 required
               />
@@ -290,7 +290,7 @@ export default function AuthScreen() {
                         passwordRef.current?.focus();
                       }
                     }}
-                    placeholder="Ví dụ: AnhPro"
+                    placeholder="Ví dụ: Nguyễn Văn A"
                     autoComplete="name"
                     tabIndex={isRegister ? 0 : -1}
                   />

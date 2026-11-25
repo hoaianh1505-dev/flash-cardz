@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
-import { Be_Vietnam_Pro, Bricolage_Grotesque } from 'next/font/google';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 
-const fontDisplay = Bricolage_Grotesque({
+const fontDisplay = Plus_Jakarta_Sans({
   subsets: ['latin', 'vietnamese'],
-  weight: ['600', '700'],
+  weight: ['600', '700', '800'],
   variable: '--font-display-loaded',
   display: 'swap',
 });
 
-const fontBody = Be_Vietnam_Pro({
+const fontBody = Inter({
   subsets: ['latin', 'vietnamese'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-body-loaded',

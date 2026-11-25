@@ -158,12 +158,12 @@ export default function FlashcardApp({ username }: Props) {
   const [toastVisible, setToastVisible] = useState(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Pitch-preserved 3.2x boosted HTMLAudioElement + AudioContext pipeline
+  // Loud 4.5x Web Audio TTS pipeline (AudioBufferSourceNode at 1.0x pitch + GainNode + Limiter)
   const enVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const speakSeqRef = useRef(0);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
-  const blobUrlCacheRef = useRef<Map<string, string>>(new Map());
+  const activeSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioBufferCacheRef = useRef<Map<string, AudioBuffer>>(new Map());
 
   // Touch swipe refs
   const touchRef = useRef({ x0: 0, y0: 0, t0: 0, tracking: false });
@@ -223,22 +223,17 @@ export default function FlashcardApp({ username }: Props) {
         setLoading(false);
       }
     })();
-
-    return () => {
-      blobUrlCacheRef.current.forEach((url) => URL.revokeObjectURL(url));
-      blobUrlCacheRef.current.clear();
-    };
   }, [showToast]);
 
   const stopSpeech = useCallback(() => {
     speakSeqRef.current++;
-    if (audioElRef.current) {
+    if (activeSourceRef.current) {
       try {
-        audioElRef.current.pause();
-        audioElRef.current.currentTime = 0;
+        activeSourceRef.current.stop();
       } catch {
         /* ignore */
       }
+      activeSourceRef.current = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
@@ -263,7 +258,7 @@ export default function FlashcardApp({ username }: Props) {
       u.lang = 'en-US';
       u.volume = 1.0;
       if (enVoiceRef.current) u.voice = enVoiceRef.current;
-      u.rate = slow ? 0.55 : 0.96;
+      u.rate = slow ? 0.65 : 0.96;
       u.onstart = () => {
         if (my === speakSeqRef.current) setIsSpeaking(true);
       };
@@ -276,7 +271,7 @@ export default function FlashcardApp({ username }: Props) {
     }
   }, []);
 
-  // Pitch-preserved, 3.2x amplified audio using persistent HTMLAudioElement + GainNode + Compressor
+  // 4.5x loud, crystal-clear TTS via Web Audio GainNode + DynamicsCompressor
   const speak = useCallback(
     async (text: string, slow?: boolean) => {
       const cleaned = cleanForSpeech(text);
@@ -290,75 +285,63 @@ export default function FlashcardApp({ username }: Props) {
       const cacheKey = `${cleaned.toLowerCase()}|${isSlow ? '1' : '0'}`;
 
       try {
-        let blobUrl = blobUrlCacheRef.current.get(cacheKey);
-        if (!blobUrl) {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) {
+          speakFallback(cleaned, isSlow, my);
+          return;
+        }
+
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new AudioCtx();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') {
+          await ctx.resume();
+        }
+
+        let audioBuf = audioBufferCacheRef.current.get(cacheKey);
+        if (!audioBuf) {
           const res = await fetch(
             `/api/tts?q=${encodeURIComponent(cleaned)}&slow=${isSlow ? '1' : '0'}`
           );
           if (!res.ok) throw new Error('TTS HTTP error');
-          const blob = await res.blob();
-          blobUrl = URL.createObjectURL(blob);
-          if (blobUrlCacheRef.current.size > 160) {
-            const oldest = blobUrlCacheRef.current.keys().next().value;
-            if (oldest) {
-              const oldUrl = blobUrlCacheRef.current.get(oldest);
-              if (oldUrl) URL.revokeObjectURL(oldUrl);
-              blobUrlCacheRef.current.delete(oldest);
-            }
+          const arrBuf = await res.arrayBuffer();
+          audioBuf = await ctx.decodeAudioData(arrBuf);
+          if (audioBufferCacheRef.current.size > 180) {
+            const oldest = audioBufferCacheRef.current.keys().next().value;
+            if (oldest) audioBufferCacheRef.current.delete(oldest);
           }
-          blobUrlCacheRef.current.set(cacheKey, blobUrl);
+          audioBufferCacheRef.current.set(cacheKey, audioBuf);
         }
 
         if (my !== speakSeqRef.current) return;
 
-        // Create & wire persistent HTMLAudioElement once to Web Audio GainNode (3.2x loud, zero pitch drop)
-        if (!audioElRef.current) {
-          const el = new Audio();
-          el.crossOrigin = 'anonymous';
-          el.volume = 1.0;
-          audioElRef.current = el;
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuf;
 
-          const AudioCtx =
-            window.AudioContext ||
-            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtx) {
-            const ctx = new AudioCtx();
-            audioCtxRef.current = ctx;
-            const src = ctx.createMediaElementSource(el);
-            const gain = ctx.createGain();
-            gain.gain.value = 3.2;
+        // Strong 4.5x gain with limiter compressor for loud, punchy, distortion-free voice
+        const gain = ctx.createGain();
+        gain.gain.value = 4.5;
 
-            const compressor = ctx.createDynamicsCompressor();
-            compressor.threshold.value = -12;
-            compressor.knee.value = 8;
-            compressor.ratio.value = 8;
-            compressor.attack.value = 0.002;
-            compressor.release.value = 0.1;
+        const compressor = ctx.createDynamicsCompressor();
+        compressor.threshold.value = -14;
+        compressor.knee.value = 6;
+        compressor.ratio.value = 12;
+        compressor.attack.value = 0.002;
+        compressor.release.value = 0.08;
 
-            src.connect(gain);
-            gain.connect(compressor);
-            compressor.connect(ctx.destination);
-          }
-        }
+        source.connect(gain);
+        gain.connect(compressor);
+        compressor.connect(ctx.destination);
 
-        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-          await audioCtxRef.current.resume();
-        }
-
-        const el = audioElRef.current;
-        el.src = blobUrl;
-        el.preservesPitch = true;
-        (el as unknown as { webkitPreservesPitch?: boolean }).webkitPreservesPitch = true;
-        // slow=1 is already naturally slower from Google TTS; 0.85x with preservesPitch makes it crisp ~0.5x
-        el.playbackRate = isSlow ? 0.85 : 1.0;
-        el.onended = () => {
+        activeSourceRef.current = source;
+        source.onended = () => {
+          if (activeSourceRef.current === source) activeSourceRef.current = null;
           if (my === speakSeqRef.current) setIsSpeaking(false);
         };
-        el.onerror = () => {
-          if (my === speakSeqRef.current) speakFallback(cleaned, isSlow, my);
-        };
-
-        await el.play();
+        source.start(0);
       } catch {
         if (my === speakSeqRef.current) {
           speakFallback(cleaned, isSlow, my);
@@ -433,12 +416,9 @@ export default function FlashcardApp({ username }: Props) {
     return { streak, today: n };
   }, [daily]);
 
-  const speakCurrent = useCallback(
-    (slow?: boolean) => {
-      if (currentCard) speak(currentCard.word, slow === true);
-    },
-    [currentCard, speak]
-  );
+  const speakCurrent = useCallback(() => {
+    if (currentCard) speak(currentCard.word, false);
+  }, [currentCard, speak]);
 
   const nextCard = useCallback(() => {
     if (!view.length) return;
@@ -446,7 +426,7 @@ export default function FlashcardApp({ username }: Props) {
     setCurrentIndex(nextIdx);
     setFlipped(false);
     stopSpeech();
-    if (autoSpeak && view[nextIdx]) speak(view[nextIdx].word);
+    if (autoSpeak && view[nextIdx]) speak(view[nextIdx].word, false);
   }, [view, safeIndex, stopSpeech, autoSpeak, speak]);
 
   const previousCard = useCallback(() => {
@@ -455,7 +435,7 @@ export default function FlashcardApp({ username }: Props) {
     setCurrentIndex(prevIdx);
     setFlipped(false);
     stopSpeech();
-    if (autoSpeak && view[prevIdx]) speak(view[prevIdx].word);
+    if (autoSpeak && view[prevIdx]) speak(view[prevIdx].word, false);
   }, [view, safeIndex, stopSpeech, autoSpeak, speak]);
 
   const flipCard = useCallback(() => {
@@ -518,7 +498,7 @@ export default function FlashcardApp({ username }: Props) {
       /* ignore */
     }
     showToast(next ? 'Tự động đọc: BẬT' : 'Tự động đọc: TẮT');
-    if (next && currentCard) speak(currentCard.word);
+    if (next && currentCard) speak(currentCard.word, false);
   }, [autoSpeak, currentCard, speak, showToast]);
 
   const handleModeChange = (m: 'all' | 'unlearned' | 'learned') => {
@@ -711,7 +691,7 @@ export default function FlashcardApp({ username }: Props) {
     });
     setQuizState({ questions, i: 0, score: 0, answered: false, selectedIdx: null, wrong: [] });
     setActiveModal('quiz');
-    if (autoSpeak && questions[0]) speak(questions[0].card.word);
+    if (autoSpeak && questions[0]) speak(questions[0].card.word, false);
   }, [view, cards, showToast, autoSpeak, speak]);
 
   const handleQuizPick = useCallback(
@@ -728,7 +708,7 @@ export default function FlashcardApp({ username }: Props) {
             if (!cur) return cur;
             const nextI = cur.i + 1;
             if (autoSpeak && cur.questions[nextI]) {
-              speak(cur.questions[nextI].card.word);
+              speak(cur.questions[nextI].card.word, false);
             }
             return { ...cur, i: nextI, answered: false, selectedIdx: null };
           });
@@ -857,7 +837,7 @@ export default function FlashcardApp({ username }: Props) {
           handleQuizPick(Number(k) - 1);
         } else if (k === 'r' || k === 's') {
           e.preventDefault();
-          speak(quizState.questions[quizState.i].card.word, e.shiftKey);
+          speak(quizState.questions[quizState.i].card.word, false);
         }
         return;
       }
@@ -877,7 +857,7 @@ export default function FlashcardApp({ username }: Props) {
         mark(true);
       } else if (k === 'r' || k === 's') {
         e.preventDefault();
-        speakCurrent(e.shiftKey);
+        speakCurrent();
       } else if (k === 'a') {
         e.preventDefault();
         toggleAutoSpeak();
@@ -938,6 +918,11 @@ export default function FlashcardApp({ username }: Props) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // Circular SVG ring math
+  const ringRadius = 46;
+  const ringCircumference = 2 * Math.PI * ringRadius;
+  const ringOffset = ringCircumference * (1 - stats.pct / 100);
+
   if (loading) {
     return (
       <div className="authWrap">
@@ -951,15 +936,15 @@ export default function FlashcardApp({ username }: Props) {
 
   return (
     <div className="workspaceRoot">
-      {/* Top sticky navigation bar */}
+      {/* Top sticky navigation bar matching reference design */}
       <header className="topBar">
         <div className="topBarInner">
           <div className="topBrand">
-            <span className="topBrandMark">FX</span>
-            <div>
-              <div className="topBrandName">Flashcard TOEIC</div>
-              <div className="topBrandSub">{stats.total} từ vựng · đồng bộ đám mây</div>
-            </div>
+            <span className="topBrandMark">
+              <IconBook size={18} />
+            </span>
+            <span className="topBrandName">Flashcard TOEIC</span>
+            <span className="topCountPill">{stats.total} từ vựng</span>
           </div>
 
           <div className="topSearchWrap">
@@ -967,15 +952,15 @@ export default function FlashcardApp({ username }: Props) {
             <input
               value={quickSearch}
               onChange={(e) => handleQuickSearch(e.target.value)}
-              placeholder="Tìm nhanh từ tiếng Anh hoặc nghĩa..."
+              placeholder="Tìm nhanh & nhảy tới thẻ..."
             />
           </div>
 
           <div className="topActions">
-            <button type="button" className="primary btnIconText" onClick={openAdd}>
-              <IconPlus size={16} />
-              <span>Thêm từ</span>
-            </button>
+            <span className="userBadge">
+              <IconUser size={14} />
+              <span>{username}</span>
+            </span>
             <button
               type="button"
               className={`iconBtn ${autoSpeak ? 'success' : 'ghost'}`}
@@ -996,20 +981,20 @@ export default function FlashcardApp({ username }: Props) {
             </button>
             <button
               type="button"
-              className="iconBtn ghost"
+              className="ghost btnIconText"
               onClick={() => setActiveModal('data')}
               title="Sao lưu / phục hồi JSON"
-              aria-label="Sao lưu / phục hồi"
             >
-              <IconDatabase size={18} />
+              <IconDatabase size={16} />
+              <span>Dữ liệu</span>
             </button>
-            <span className="userBadge">
-              <IconUser size={14} />
-              <span>{username}</span>
-            </span>
+            <button type="button" className="primary btnIconText" onClick={openAdd}>
+              <IconPlus size={16} />
+              <span>Thêm từ</span>
+            </button>
             <button
               type="button"
-              className="danger small btnIconText"
+              className="ghost btnIconText"
               onClick={handleLogout}
               title="Đăng xuất"
             >
@@ -1020,132 +1005,48 @@ export default function FlashcardApp({ username }: Props) {
         </div>
       </header>
 
-      {/* Main 2-column workspace */}
-      <div className="workspaceGrid">
-        {/* Left Sidebar */}
-        <aside className="sidePanel" aria-label="Bảng điều khiển học tập">
-          {/* Progress summary */}
-          <div className="sideCard">
-            <div className="sideProgHead">
-              <div>
-                <div className="sideLabel">TIẾN ĐỘ HỌC</div>
-                <div className="sideBigPct">{stats.pct}%</div>
-              </div>
-              <div className="sideStreakPill">
-                <IconFlame size={15} className="flameIcon" />
-                <span>
-                  {dailyDisplay.streak} ngày · +{dailyDisplay.today}
-                </span>
-              </div>
-            </div>
-            <div className="progress" style={{ margin: '10px 0 14px' }}>
-              <div className="progressBar" style={{ width: `${stats.pct}%` }} />
-            </div>
-            <div className="sideMiniStats">
-              <div>
-                <b>{stats.total}</b>
-                <span>Tổng thẻ</span>
-              </div>
-              <div>
-                <b style={{ color: 'var(--teal)' }}>{stats.learned}</b>
-                <span>Đã thuộc</span>
-              </div>
-              <div>
-                <b style={{ color: 'var(--rust)' }}>{stats.remain}</b>
-                <span>Chưa thuộc</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Mode filter */}
-          <div className="sideCard">
-            <div className="sideLabel">CHẾ ĐỘ ÔN TẬP</div>
-            <div className="sideModeList">
-              <button
-                type="button"
-                className={`sideModeBtn ${mode === 'all' ? 'active' : ''}`}
-                onClick={() => handleModeChange('all')}
-              >
-                <span>Tất cả thẻ</span>
-                <span className="sideCount">{stats.total}</span>
-              </button>
-              <button
-                type="button"
-                className={`sideModeBtn ${mode === 'unlearned' ? 'active' : ''}`}
-                onClick={() => handleModeChange('unlearned')}
-              >
-                <span>Chưa thuộc</span>
-                <span className="sideCount">{stats.remain}</span>
-              </button>
-              <button
-                type="button"
-                className={`sideModeBtn ${mode === 'learned' ? 'active' : ''}`}
-                onClick={() => handleModeChange('learned')}
-              >
-                <span>Đã thuộc</span>
-                <span className="sideCount">{stats.learned}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Tools */}
-          <div className="sideCard">
-            <div className="sideLabel">CÔNG CỤ HỌC</div>
-            <div className="sideToolsList">
-              <button type="button" className="sideToolBtn" onClick={handleShuffle}>
-                <IconShuffle size={17} />
-                <span>Trộn ngẫu nhiên</span>
-              </button>
-              <button type="button" className="sideToolBtn" onClick={openQuiz}>
-                <IconQuiz size={17} />
-                <span>Trắc nghiệm 10 câu</span>
-              </button>
-              <button
-                type="button"
-                className="sideToolBtn"
-                onClick={() => {
-                  setReviewMode('all');
-                  setReviewSearch('');
-                  setActiveModal('review');
-                }}
-              >
-                <IconList size={17} />
-                <span>Quản lý từ vựng</span>
-              </button>
-              <button
-                type="button"
-                className="sideToolBtn"
-                onClick={() => {
-                  setCatFilter('all');
-                  setCatSearch('');
-                  setActiveModal('cat');
-                }}
-              >
-                <IconLayers size={17} />
-                <span>Xem theo từ loại</span>
-              </button>
-              <button
-                type="button"
-                className="sideToolBtn"
-                onClick={() => setActiveModal('irr')}
-              >
-                <IconBook size={17} />
-                <span>Động từ bất quy tắc (100 / 360)</span>
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Right Main Study Stage */}
-        <main className="studyStage">
-          {/* POS filter strip */}
-          <div className="stagePosBar">
+      {/* Main 3-column workspace */}
+      <div className="triGrid">
+        {/* LEFT COLUMN: Mode tabs + Vertical POS list */}
+        <aside className="leftCol" aria-label="Lọc từ vựng">
+          <div className="leftModeTabs" role="tablist">
             <button
               type="button"
-              className={`chip ${typeFilter === 'all' ? 'active' : ''}`}
+              role="tab"
+              aria-selected={mode === 'all'}
+              className={`leftModeTab ${mode === 'all' ? 'active' : ''}`}
+              onClick={() => handleModeChange('all')}
+            >
+              Tất cả
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'unlearned'}
+              className={`leftModeTab ${mode === 'unlearned' ? 'active' : ''}`}
+              onClick={() => handleModeChange('unlearned')}
+            >
+              Chưa thuộc ({stats.remain})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'learned'}
+              className={`leftModeTab ${mode === 'learned' ? 'active' : ''}`}
+              onClick={() => handleModeChange('learned')}
+            >
+              Đã thuộc ({stats.learned})
+            </button>
+          </div>
+
+          <div className="posListCard">
+            <button
+              type="button"
+              className={`posListRow ${typeFilter === 'all' ? 'active' : ''}`}
               onClick={() => handleTypeChange('all')}
             >
-              Tất cả <span className="chipN">{typeCounts.baseLen}</span>
+              <span>Tất cả</span>
+              <span className="posListNum">{typeCounts.baseLen}</span>
             </button>
             {POS_LIST.map(([k, label]) => {
               const n = typeCounts.counts[k] || 0;
@@ -1154,19 +1055,80 @@ export default function FlashcardApp({ username }: Props) {
                 <button
                   key={k}
                   type="button"
-                  className={`chip ${typeFilter === k ? 'active' : ''}`}
+                  className={`posListRow ${typeFilter === k ? 'active' : ''}`}
                   onClick={() => handleTypeChange(k)}
                 >
-                  {label} <span className="chipN">{n}</span>
+                  <span>{label}</span>
+                  <span className="posListNum">{n}</span>
                 </button>
               );
             })}
           </div>
+        </aside>
 
-          {/* Big 3D Flashcard */}
+        {/* CENTER COLUMN: Card status bar + Big centered Flashcard + Action row */}
+        <main className="centerCol">
+          <div className="centerTopBar">
+            <div className="centerTopLeft">
+              <span className="centerCounter">
+                {view.length ? `${safeIndex + 1} / ${view.length}` : '0 / 0'}
+              </span>
+              {currentCard && (
+                <span className={`cardStatePill ${currentCard.learned ? 'ok' : ''}`}>
+                  <span className={`dot ${currentCard.learned ? 'ok' : ''}`} />
+                  {currentCard.learned ? 'Đã thuộc' : 'Chưa thuộc'}
+                </span>
+              )}
+            </div>
+
+            <div className="centerTopActions">
+              <button
+                type="button"
+                className="barIconBtn"
+                onClick={handleShuffle}
+                title="Trộn ngẫu nhiên"
+                aria-label="Trộn ngẫu nhiên"
+              >
+                <IconShuffle size={18} />
+              </button>
+              {currentCard && (
+                <>
+                  <button
+                    type="button"
+                    className={`barIconBtn ${isSpeaking ? 'speaking' : ''}`}
+                    onClick={speakCurrent}
+                    title="Phát âm to rõ (R)"
+                    aria-label="Phát âm"
+                  >
+                    <IconVolume size={19} />
+                  </button>
+                  <button
+                    type="button"
+                    className="barIconBtn"
+                    onClick={() => openEdit(currentCard)}
+                    title="Sửa thẻ"
+                    aria-label="Sửa thẻ"
+                  >
+                    <IconEdit size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    className="barIconBtn dangerHover"
+                    onClick={() => deleteCard(currentCard)}
+                    title="Xoá thẻ này"
+                    aria-label="Xoá thẻ này"
+                  >
+                    <IconTrash size={18} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 3D Flip Flashcard */}
           <div
             ref={flashcardRef}
-            className={`card stageCard ${flipped ? 'flipped' : ''}`}
+            className={`card triCard ${flipped ? 'flipped' : ''}`}
             onClick={flipCard}
             onTouchStart={(e) => {
               if (e.touches.length !== 1) {
@@ -1200,78 +1162,14 @@ export default function FlashcardApp({ username }: Props) {
               }
             }}
           >
-            <div className="cardTopLeft">
-              <span className="cardCountPill">
-                {view.length ? `${safeIndex + 1} / ${view.length}` : '0 / 0'}
-              </span>
-              {currentCard && (
-                <span className={`cardStatePill ${currentCard.learned ? 'ok' : ''}`}>
-                  <span className={`dot ${currentCard.learned ? 'ok' : ''}`} />
-                  {currentCard.learned ? 'Đã thuộc' : 'Chưa thuộc'}
-                </span>
-              )}
-            </div>
-
-            {currentCard && (
-              <div className="cardTools">
-                <button
-                  type="button"
-                  className={isSpeaking ? 'speaking' : ''}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    speakCurrent(false);
-                  }}
-                  title="Phát âm to rõ (R)"
-                  aria-label="Phát âm"
-                >
-                  <IconVolume size={20} />
-                </button>
-                <button
-                  type="button"
-                  className="slowToolBtn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    speakCurrent(true);
-                  }}
-                  title="Đọc chậm rõ từng âm (Shift+R)"
-                  aria-label="Đọc chậm 0.5x"
-                >
-                  0.5×
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEdit(currentCard);
-                  }}
-                  title="Sửa từ và nghĩa"
-                  aria-label="Sửa từ và nghĩa"
-                >
-                  <IconEdit size={18} />
-                </button>
-                <button
-                  type="button"
-                  className="deleteToolBtn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteCard(currentCard);
-                  }}
-                  title="Xoá thẻ này"
-                  aria-label="Xoá thẻ này"
-                >
-                  <IconTrash size={18} />
-                </button>
-              </div>
-            )}
-
-            <div className="inner stageInner">
-              <div className="face stageFace">
+            <div className="inner triInner">
+              <div className="face triFace">
                 <div className="label">ENGLISH</div>
-                <div className="word stageWord">
+                <div className="word triWord">
                   {currentCard
                     ? capFirst(currentCard.word)
                     : typeFilter !== 'all' && cards.length
-                      ? 'Không có thẻ nào thuộc loại từ này'
+                      ? 'Không có thẻ thuộc loại từ này'
                       : mode === 'learned'
                         ? 'Chưa có thẻ đã thuộc'
                         : mode === 'unlearned'
@@ -1284,7 +1182,7 @@ export default function FlashcardApp({ username }: Props) {
                       {detectPOS(currentCard)
                         .filter((t) => t !== 'other')
                         .map((t) => (
-                          <span key={t} className="posTag">
+                          <span key={t} className="posTagWarm">
                             {POS_SHORT[t]}
                           </span>
                         ))}
@@ -1294,10 +1192,10 @@ export default function FlashcardApp({ username }: Props) {
                     )}
                   </>
                 )}
-                <div className="hint">Bấm vào thẻ hoặc nhấn Space để lật mặt nghĩa</div>
+                <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem nghĩa</div>
               </div>
 
-              <div className="face back stageFace">
+              <div className="face back triFace">
                 <div className="label">TIẾNG VIỆT</div>
                 <div className="meaningList">
                   {currentCard?.meanings.map((m, idx) => (
@@ -1310,40 +1208,139 @@ export default function FlashcardApp({ username }: Props) {
             </div>
           </div>
 
-          {/* Primary Study Controls */}
-          <div className="controls stageControls">
-            <button type="button" className="soft" onClick={previousCard}>
+          {/* Action Row directly below card */}
+          <div className="triControls">
+            <button type="button" className="triBtnOutline" onClick={previousCard}>
               ← Trước
             </button>
             <button
               type="button"
-              className="danger btnIconText centerBtn"
+              className="triBtnOutline triBtnUnlearned btnIconText centerBtn"
               onClick={() => mark(false)}
             >
-              <IconX size={17} />
+              <IconX size={16} />
               <span>Chưa thuộc</span>
-              <kbd>C</kbd>
+              <span className="keyTag">[C]</span>
             </button>
             <button
               type="button"
-              className="success btnIconText centerBtn"
+              className="triBtnSolid btnIconText centerBtn"
               onClick={() => mark(true)}
             >
-              <IconCheck size={17} />
+              <IconCheck size={16} />
               <span>Đã thuộc</span>
-              <kbd>V</kbd>
+              <span className="keyTagSolid">[V]</span>
             </button>
-            <button type="button" className="soft" onClick={nextCard}>
+            <button type="button" className="triBtnSolid" onClick={nextCard}>
               Tiếp →
             </button>
           </div>
-
-          <div className="kbdHint">
-            Phím tắt: <kbd>←</kbd> <kbd>→</kbd> chuyển thẻ · <kbd>Space</kbd> lật · <kbd>C</kbd>{' '}
-            chưa thuộc · <kbd>V</kbd> đã thuộc · <kbd>R</kbd> đọc · <kbd>Shift</kbd>+<kbd>R</kbd>{' '}
-            đọc chậm · <kbd>A</kbd> tự đọc
-          </div>
         </main>
+
+        {/* RIGHT COLUMN: Circular Progress + Quiz Banner + Lookup & Manage */}
+        <aside className="rightCol" aria-label="Tiến độ và công cụ">
+          {/* Circular Progress Card */}
+          <div className="rightCard progressCard">
+            <h3 className="rightCardTitle">Tiến độ học tập</h3>
+            <div className="ringWrap">
+              <svg width="116" height="116" viewBox="0 0 116 116" aria-hidden="true">
+                <circle
+                  cx="58"
+                  cy="58"
+                  r={ringRadius}
+                  fill="none"
+                  stroke="var(--line-soft)"
+                  strokeWidth="9"
+                />
+                <circle
+                  cx="58"
+                  cy="58"
+                  r={ringRadius}
+                  fill="none"
+                  stroke="var(--teal)"
+                  strokeWidth="9"
+                  strokeLinecap="round"
+                  strokeDasharray={ringCircumference}
+                  strokeDashoffset={ringOffset}
+                  transform="rotate(-90 58 58)"
+                  style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+                />
+              </svg>
+              <span className="ringText">{stats.pct}%</span>
+            </div>
+            <div className="ringSub">
+              {stats.learned} / {stats.total} đã thuộc
+            </div>
+            <div className="streakBadge">
+              <IconFlame size={15} className="flameIcon" />
+              <span>
+                Chuỗi {dailyDisplay.streak} ngày
+                {dailyDisplay.today > 0 ? ` · +${dailyDisplay.today}` : ''}
+              </span>
+            </div>
+          </div>
+
+          {/* Quiz Banner Card */}
+          <div className="quizBanner">
+            <div>
+              <div className="quizBannerTitle">Trắc nghiệm nhanh</div>
+              <div className="quizBannerSub">Kiểm tra 10 từ ngẫu nhiên</div>
+            </div>
+            <button type="button" className="quizBannerBtn" onClick={openQuiz}>
+              Bắt đầu
+            </button>
+          </div>
+
+          {/* Lookup & Manage Card */}
+          <div className="rightCard">
+            <h3 className="rightCardTitle">Tra cứu &amp; Quản lý</h3>
+            <div className="toolStack">
+              <button
+                type="button"
+                className="toolRowCard"
+                onClick={() => setActiveModal('irr')}
+              >
+                <div className="toolRowText">
+                  <b>Động từ bất quy tắc</b>
+                  <span>100 từ thông dụng &amp; 360 từ V1/V2/V3</span>
+                </div>
+                <span className="openPill">Mở</span>
+              </button>
+
+              <button
+                type="button"
+                className="toolRowCard"
+                onClick={() => {
+                  setCatFilter('all');
+                  setCatSearch('');
+                  setActiveModal('cat');
+                }}
+              >
+                <div className="toolRowText">
+                  <b>Theo từ loại</b>
+                  <span>Xem danh, động, tính, cụm từ</span>
+                </div>
+                <span className="openPill">Mở</span>
+              </button>
+
+              <button
+                type="button"
+                className="toolRowCard"
+                onClick={() => {
+                  setReviewMode('all');
+                  setReviewSearch('');
+                  setActiveModal('review');
+                }}
+              >
+                <div className="toolRowText">
+                  <b>Quản lý từ vựng</b>
+                  <span>Xem A-Z, sửa, gộp, xoá</span>
+                </div>
+                <span className="openPill">Mở</span>
+              </button>
+            </div>
+          </div>
+        </aside>
       </div>
 
       {/* Add / Edit Modal */}
