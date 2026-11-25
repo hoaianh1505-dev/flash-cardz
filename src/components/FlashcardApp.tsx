@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/pos';
 import IrregularModal from './IrregularModal';
+import GrammarModal from './GrammarModal';
 import {
   IconBook,
   IconCheck,
@@ -124,8 +125,18 @@ export default function FlashcardApp({ username }: Props) {
 
   // Modals
   const [activeModal, setActiveModal] = useState<
-    null | 'edit' | 'review' | 'quiz' | 'data' | 'cat' | 'irr'
+    null | 'edit' | 'review' | 'quiz' | 'data' | 'cat' | 'irr' | 'grammar'
   >(null);
+
+  // Reverse study mode (EN -> VI vs VI -> EN)
+  const [reverseMode, setReverseMode] = useState(false);
+
+  // Spelling practice under flashcard
+  const [spellInput, setSpellInput] = useState('');
+  const [spellStatus, setSpellStatus] = useState<'idle' | 'correct' | 'wrong'>('idle');
+
+  // Recently viewed cards (up to 6)
+  const [recentIds, setRecentIds] = useState<string[]>([]);
 
   // Edit / Add form
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -386,6 +397,46 @@ export default function FlashcardApp({ username }: Props) {
   useEffect(() => {
     document.title = `Flashcard TOEIC — ${cards.length} từ vựng`;
   }, [cards.length]);
+
+  // Track recently viewed cards & reset spelling input when card changes
+  useEffect(() => {
+    setSpellInput('');
+    setSpellStatus('idle');
+    if (currentCard?.id) {
+      setRecentIds((prev) => [currentCard.id, ...prev.filter((id) => id !== currentCard.id)].slice(0, 7));
+    }
+  }, [currentCard?.id]);
+
+  const recentCards = useMemo(() => {
+    const byId = new Map(cards.map((c) => [c.id, c]));
+    return recentIds
+      .filter((id) => id !== currentCard?.id)
+      .map((id) => byId.get(id))
+      .filter((c): c is CardItem => Boolean(c))
+      .slice(0, 6);
+  }, [cards, recentIds, currentCard?.id]);
+
+  const checkSpelling = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentCard) return;
+    const typed = keyOf(spellInput);
+    if (!typed) return;
+    // Accept exact word or any synonym separated by = or /
+    const cleanWord = currentCard.word.replace(/\([^)]*\)/g, ' ');
+    const validAnswers = [
+      keyOf(currentCard.word),
+      keyOf(cleanWord),
+      ...cleanWord.split(/[/=]/).map((s) => keyOf(s)),
+    ].filter(Boolean);
+    if (validAnswers.includes(typed)) {
+      setSpellStatus('correct');
+      speak(currentCard.word, false);
+      showToast('Chính xác! Chuẩn chính tả.', 'success');
+    } else {
+      setSpellStatus('wrong');
+      showToast(`Chưa đúng — đáp án: ${capFirst(currentCard.word)}`, 'error');
+    }
+  };
 
   const stats = useMemo(() => {
     const total = cards.length;
@@ -1007,7 +1058,7 @@ export default function FlashcardApp({ username }: Props) {
 
       {/* Main 3-column workspace */}
       <div className="triGrid">
-        {/* LEFT COLUMN: Mode tabs + Vertical POS list */}
+        {/* LEFT COLUMN: Mode selector + Vertical POS list */}
         <aside className="leftCol" aria-label="Lọc từ vựng">
           <div className="leftModeTabs" role="tablist">
             <button
@@ -1017,7 +1068,8 @@ export default function FlashcardApp({ username }: Props) {
               className={`leftModeTab ${mode === 'all' ? 'active' : ''}`}
               onClick={() => handleModeChange('all')}
             >
-              Tất cả
+              <span>Tất cả</span>
+              <span className="leftModeNum">{stats.total}</span>
             </button>
             <button
               type="button"
@@ -1026,7 +1078,8 @@ export default function FlashcardApp({ username }: Props) {
               className={`leftModeTab ${mode === 'unlearned' ? 'active' : ''}`}
               onClick={() => handleModeChange('unlearned')}
             >
-              Chưa thuộc ({stats.remain})
+              <span>Chưa thuộc</span>
+              <span className="leftModeNum">{stats.remain}</span>
             </button>
             <button
               type="button"
@@ -1035,7 +1088,8 @@ export default function FlashcardApp({ username }: Props) {
               className={`leftModeTab ${mode === 'learned' ? 'active' : ''}`}
               onClick={() => handleModeChange('learned')}
             >
-              Đã thuộc ({stats.learned})
+              <span>Đã thuộc</span>
+              <span className="leftModeNum">{stats.learned}</span>
             </button>
           </div>
 
@@ -1082,6 +1136,20 @@ export default function FlashcardApp({ username }: Props) {
             </div>
 
             <div className="centerTopActions">
+              <button
+                type="button"
+                className={`dirPillBtn ${reverseMode ? 'active' : ''}`}
+                onClick={() => {
+                  setReverseMode((r) => !r);
+                  setFlipped(false);
+                  showToast(
+                    !reverseMode ? 'Chế độ: Nghĩa Việt → Từ Anh' : 'Chế độ: Từ Anh → Nghĩa Việt'
+                  );
+                }}
+                title="Đảo chiều mặt trước / mặt sau"
+              >
+                {reverseMode ? 'VI → EN' : 'EN → VI'}
+              </button>
               <button
                 type="button"
                 className="barIconBtn"
@@ -1164,20 +1232,58 @@ export default function FlashcardApp({ username }: Props) {
           >
             <div className="inner triInner">
               <div className="face triFace">
-                <div className="label">ENGLISH</div>
-                <div className="word triWord">
-                  {currentCard
-                    ? capFirst(currentCard.word)
-                    : typeFilter !== 'all' && cards.length
-                      ? 'Không có thẻ thuộc loại từ này'
-                      : mode === 'learned'
-                        ? 'Chưa có thẻ đã thuộc'
-                        : mode === 'unlearned'
-                          ? 'Bạn đã thuộc hết bộ thẻ này'
-                          : 'Chưa có flashcard'}
-                </div>
-                {currentCard && (
+                {reverseMode && currentCard ? (
                   <>
+                    <div className="label">TIẾNG VIỆT</div>
+                    <div className="meaningList">
+                      {currentCard.meanings.map((m, idx) => (
+                        <div key={idx} className="meaningItem">
+                          {capFirst(m.text)}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem từ tiếng Anh</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="label">ENGLISH</div>
+                    <div className="word triWord">
+                      {currentCard
+                        ? capFirst(currentCard.word)
+                        : typeFilter !== 'all' && cards.length
+                          ? 'Không có thẻ thuộc loại từ này'
+                          : mode === 'learned'
+                            ? 'Chưa có thẻ đã thuộc'
+                            : mode === 'unlearned'
+                              ? 'Bạn đã thuộc hết bộ thẻ này'
+                              : 'Chưa có flashcard'}
+                    </div>
+                    {currentCard && (
+                      <>
+                        <div className="posBadge">
+                          {detectPOS(currentCard)
+                            .filter((t) => t !== 'other')
+                            .map((t) => (
+                              <span key={t} className="posTagWarm">
+                                {POS_SHORT[t]}
+                              </span>
+                            ))}
+                        </div>
+                        {currentCard.meanings[0]?.phonetic && (
+                          <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
+                        )}
+                      </>
+                    )}
+                    <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem nghĩa</div>
+                  </>
+                )}
+              </div>
+
+              <div className="face back triFace">
+                {reverseMode && currentCard ? (
+                  <>
+                    <div className="label">ENGLISH</div>
+                    <div className="word triWord">{capFirst(currentCard.word)}</div>
                     <div className="posBadge">
                       {detectPOS(currentCard)
                         .filter((t) => t !== 'other')
@@ -1191,19 +1297,18 @@ export default function FlashcardApp({ username }: Props) {
                       <div className="phonTag">{currentCard.meanings[0].phonetic}</div>
                     )}
                   </>
-                )}
-                <div className="hint">Bấm vào thẻ hoặc nhấn Space để xem nghĩa</div>
-              </div>
-
-              <div className="face back triFace">
-                <div className="label">TIẾNG VIỆT</div>
-                <div className="meaningList">
-                  {currentCard?.meanings.map((m, idx) => (
-                    <div key={idx} className="meaningItem">
-                      {capFirst(m.text)}
+                ) : (
+                  <>
+                    <div className="label">TIẾNG VIỆT</div>
+                    <div className="meaningList">
+                      {currentCard?.meanings.map((m, idx) => (
+                        <div key={idx} className="meaningItem">
+                          {capFirst(m.text)}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1235,6 +1340,62 @@ export default function FlashcardApp({ username }: Props) {
               Tiếp →
             </button>
           </div>
+
+          {/* Spelling Practice Panel (fills lower stage purposefully) */}
+          {currentCard && (
+            <form className="spellCard" onSubmit={checkSpelling}>
+              <div className="spellHead">
+                <span className="spellTitle">Luyện gõ chính tả</span>
+                <span className="spellHint">
+                  {reverseMode
+                    ? 'Nhập từ tiếng Anh tương ứng với nghĩa trên thẻ'
+                    : `Nghĩa: ${capFirst(currentCard.meanings[0].text)}`}
+                </span>
+              </div>
+              <div className="spellRow">
+                <input
+                  value={spellInput}
+                  onChange={(e) => {
+                    setSpellInput(e.target.value);
+                    if (spellStatus !== 'idle') setSpellStatus('idle');
+                  }}
+                  className={
+                    spellStatus === 'correct'
+                      ? 'spellOk'
+                      : spellStatus === 'wrong'
+                        ? 'spellErr'
+                        : ''
+                  }
+                  placeholder="Gõ lại từ tiếng Anh rồi nhấn Enter để kiểm tra..."
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button type="submit" className="soft">
+                  Kiểm tra
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Recently Studied Cards Strip */}
+          {recentCards.length > 0 && (
+            <div className="recentStrip">
+              <span className="recentLabel">Vừa xem:</span>
+              <div className="recentChips">
+                {recentCards.map((rc) => (
+                  <button
+                    key={rc.id}
+                    type="button"
+                    className={`recentChip ${rc.learned ? 'ok' : ''}`}
+                    onClick={() => jumpToCard(rc.id)}
+                    title={rc.meanings.map((m) => capFirst(m.text)).join('; ')}
+                  >
+                    {capFirst(rc.word)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
 
         {/* RIGHT COLUMN: Circular Progress + Quiz Banner + Lookup & Manage */}
@@ -1295,6 +1456,18 @@ export default function FlashcardApp({ username }: Props) {
           <div className="rightCard">
             <h3 className="rightCardTitle">Tra cứu &amp; Quản lý</h3>
             <div className="toolStack">
+              <button
+                type="button"
+                className="toolRowCard"
+                onClick={() => setActiveModal('grammar')}
+              >
+                <div className="toolRowText">
+                  <b>Ngữ pháp &amp; IPA TOEIC</b>
+                  <span>12 thì, từ loại Part 5, liên từ &amp; 44 âm IPA</span>
+                </div>
+                <span className="openPill">Mở</span>
+              </button>
+
               <button
                 type="button"
                 className="toolRowCard"
@@ -1919,6 +2092,14 @@ export default function FlashcardApp({ username }: Props) {
           onClose={() => setActiveModal(null)}
           onSpeak={speak}
           onToast={showToast}
+        />
+      )}
+
+      {/* TOEIC Grammar & IPA Reference Modal */}
+      {activeModal === 'grammar' && (
+        <GrammarModal
+          onClose={() => setActiveModal(null)}
+          onSpeak={(text) => speak(text, false)}
         />
       )}
 
