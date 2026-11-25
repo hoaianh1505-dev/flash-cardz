@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function AuthScreen() {
+interface AuthScreenProps {
+  onGuestEnter?: () => void;
+}
+
+export default function AuthScreen({ onGuestEnter }: AuthScreenProps) {
   const router = useRouter();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
@@ -368,6 +372,22 @@ export default function AuthScreen() {
                   ? 'Tạo tài khoản'
                   : 'Đăng nhập'}
             </button>
+
+            {onGuestEnter && (
+              <>
+                <div className="authDivider">
+                  <span>hoặc</span>
+                </div>
+                <button
+                  type="button"
+                  className="ghost authGuestBtn"
+                  onClick={onGuestEnter}
+                  disabled={loading}
+                >
+                  Học ngay với Tài khoản khách (Không cần đăng nhập)
+                </button>
+              </>
+            )}
           </form>
 
           <p className="authSwitchHint">

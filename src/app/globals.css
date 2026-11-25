@@ -1,20 +1,21 @@
 :root {
-  --paper: #ece9df;
-  --card-bg: #f8f6f0;
-  --ink: #232a2e;
-  --ink-soft: #566066;
-  --ink-faint: #7e878c;
-  --line: #d4cfc1;
-  --line-soft: #e2ddd0;
-  --teal: #2a6556;
-  --teal-deep: #1e4c40;
-  --teal-bg: #dcebe5;
-  --rust: #a9442e;
-  --rust-bg: #f5e2dc;
-  --gold: #9a6f1d;
-  --gold-bg: #efe5cc;
-  --shadow: 0 12px 28px rgba(32, 38, 42, 0.08);
-  --shadow-sm: 0 3px 10px rgba(32, 38, 42, 0.05);
+  --paper: #dedad0;
+  --sidebar-bg: #e6e2d8;
+  --card-bg: #ebe8df;
+  --ink: #262c2f;
+  --ink-soft: #545e63;
+  --ink-faint: #778085;
+  --line: #c9c3b4;
+  --line-soft: #d7d2c5;
+  --teal: #2c5e51;
+  --teal-deep: #20483e;
+  --teal-bg: #d1e0da;
+  --rust: #9e4531;
+  --rust-bg: #e8d5cf;
+  --gold: #8c6720;
+  --gold-bg: #e4d9be;
+  --shadow: 0 10px 24px rgba(32, 38, 42, 0.07);
+  --shadow-sm: 0 2px 8px rgba(32, 38, 42, 0.045);
   --radius: 16px;
   --font-display: var(--font-display-loaded), "Segoe UI", Arial, Helvetica, sans-serif;
   --font-ui: var(--font-body-loaded), "Segoe UI", Arial, Helvetica, sans-serif;
@@ -22,20 +23,21 @@
 }
 
 :root[data-theme="dark"] {
-  --paper: #161b1e;
-  --card-bg: #1e2529;
-  --ink: #e4e8e4;
-  --ink-soft: #9aa6ac;
-  --ink-faint: #707c82;
-  --line: #2f3a40;
-  --line-soft: #263036;
-  --teal: #58b49b;
-  --teal-deep: #3d8e78;
-  --teal-bg: #1b312b;
-  --rust: #e07b60;
-  --rust-bg: #36221d;
-  --gold: #d9b561;
-  --gold-bg: #322918;
+  --paper: #14191c;
+  --sidebar-bg: #181f23;
+  --card-bg: #1d252a;
+  --ink: #dfe4e0;
+  --ink-soft: #96a2a8;
+  --ink-faint: #6c787e;
+  --line: #2d383e;
+  --line-soft: #242e34;
+  --teal: #55ad95;
+  --teal-deep: #3b8873;
+  --teal-bg: #1b302a;
+  --rust: #dc7a60;
+  --rust-bg: #34211c;
+  --gold: #d5b15e;
+  --gold-bg: #302718;
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
   --shadow-sm: 0 3px 10px rgba(0, 0, 0, 0.22);
 }
@@ -3479,5 +3481,637 @@ kbd {
   }
   .userBadge {
     display: none;
+  }
+}
+
+
+/* ===== Auth Guest Divider & Button ===== */
+.authDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 10px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+.authDivider::before,
+.authDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.authGuestBtn {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  border-radius: 10px;
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--paper);
+}
+
+.authGuestBtn:hover {
+  border-color: var(--teal);
+  color: var(--teal-deep);
+  background: var(--teal-bg);
+}
+
+/* ===== Unified App Shell: Fixed Left Sidebar + Slim Top Header ===== */
+.appShell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--paper);
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+.appSidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 248px;
+  background: var(--sidebar-bg);
+  border-right: 1.5px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 14px 16px;
+  gap: 16px;
+  z-index: 40;
+  overflow-y: auto;
+}
+
+.sidebarTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+}
+
+.sidebarBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebarCloseBtn {
+  display: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.sidebarItem:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.sidebarItem.active {
+  background: var(--teal);
+  color: #f4f2ec;
+}
+
+.sidebarBadge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.14);
+}
+
+.sidebarItem.active .sidebarBadge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.sidebarProgressBox {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 13px 14px;
+  margin-top: auto;
+}
+
+.sidebarProgTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.sidebarProgTop b {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--teal);
+}
+
+.sidebarProgTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.sidebarProgTrack.thin {
+  height: 5px;
+}
+
+.sidebarProgFill {
+  height: 100%;
+  background: var(--teal);
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.sidebarProgFill.gold {
+  background: var(--gold);
+}
+
+.sidebarProgMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 7px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.sidebarStreakInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.sidebarGoalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 5px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.sidebarGoalRow b {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+.sidebarFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.sidebarUser {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.sidebarAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--gold-bg);
+  color: var(--gold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.sidebarUserInfo {
+  min-width: 0;
+}
+
+.sidebarUserInfo b {
+  display: block;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarUserInfo span {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.sidebarAuthBtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+/* Main Content Area + Slim Header */
+.appMain {
+  flex: 1;
+  margin-left: 248px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.appHeader {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 62px;
+  background: var(--sidebar-bg);
+  border-bottom: 1.5px solid var(--line-soft);
+  padding: 0 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.appHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mobileMenuBtn {
+  display: none;
+}
+
+.appHeaderTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.headerSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 340px;
+  width: 100%;
+}
+
+.headerSearchWrap input {
+  width: 100%;
+  padding: 7px 12px 7px 36px;
+  border-radius: 10px;
+  background: var(--paper);
+  font-size: 13.5px;
+}
+
+.appHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appContent {
+  flex: 1;
+  padding: 22px 26px 48px;
+}
+
+/* Study Clean Centered Stage */
+.studyCleanWrap {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.studyFilterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.studyFilterRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.posSelect {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--card-bg);
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+  cursor: pointer;
+}
+
+.barIconBtn.starActive {
+  color: var(--gold);
+  background: var(--gold-bg);
+  border-color: var(--gold);
+}
+
+.barIconBtn.noteActive {
+  color: var(--teal-deep);
+  background: var(--teal-bg);
+  border-color: var(--teal);
+}
+
+.starBtnOn {
+  background: var(--gold-bg);
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.cardNoteChip {
+  margin-top: 12px;
+  max-width: 540px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.noteEditorBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--line);
+  border-radius: 13px;
+  padding: 10px 12px;
+}
+
+.noteEditorBar input {
+  flex: 1;
+  background: var(--paper);
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 9px;
+}
+
+.libNoteLine {
+  display: block;
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--teal-deep);
+}
+
+/* Inner pages inside AppMain */
+.innerPageWrap {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+/* Stats / Analytics Tab */
+.statsPageGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.kpiCard {
+  background: var(--card-bg);
+  border: 1.5px solid var(--line-soft);
+  border-radius: 16px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.kpiLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.kpiVal {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.kpiVal.teal {
+  color: var(--teal);
+}
+
+.kpiVal.gold {
+  color: var(--gold);
+}
+
+.kpiSub {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+.goalPickRow {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.goalChip {
+  padding: 3px 9px;
+  border-radius: 7px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.goalChip.active {
+  background: var(--teal);
+  color: #fff;
+  border-color: var(--teal);
+}
+
+.statsTwoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.statsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.wrongPill {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--rust-bg);
+  color: var(--rust);
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+.sessionModeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sessionTag {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+}
+
+.sessionTag.quiz {
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+
+.sessionDate {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.sessionMeta {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+.sessionAcc {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--rust);
+}
+
+.sessionAcc.ok {
+  color: var(--teal);
+}
+
+@media (max-width: 1060px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .statsTwoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .appSidebar {
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: var(--shadow);
+  }
+  .appSidebar.open {
+    transform: translateX(0);
+  }
+  .sidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 20, 22, 0.45);
+    z-index: 35;
+  }
+  .sidebarCloseBtn {
+    display: inline-flex;
+  }
+  .appMain {
+    margin-left: 0;
+  }
+  .mobileMenuBtn {
+    display: inline-flex;
+  }
+  .appHeader {
+    padding: 0 14px;
+  }
+  .headerSearchWrap {
+    display: none;
+  }
+  .appContent {
+    padding: 16px 14px 44px;
   }
 }

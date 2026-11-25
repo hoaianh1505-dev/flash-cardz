@@ -270,3 +270,56 @@ export function IconRepeat({ size, ...p }: IconProps) {
     </svg>
   );
 }
+
+export function IconStar({ size, filled, ...p }: IconProps & { filled?: boolean }) {
+  return (
+    <svg
+      {...base(size)}
+      fill={filled ? 'currentColor' : 'none'}
+      {...p}
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
+export function IconBarChart({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <path d="M3 3v18h18" />
+      <rect x="7" y="10" width="3" height="7" rx="1" />
+      <rect x="12" y="6" width="3" height="11" rx="1" />
+      <rect x="17" y="13" width="3" height="4" rx="1" />
+    </svg>
+  );
+}
+
+export function IconMenu({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+    </svg>
+  );
+}
+
+export function IconNote({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z" />
+      <path d="M15 3v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </svg>
+  );
+}
+
+export function IconLogIn({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <polyline points="10 17 15 12 10 7" />
+      <line x1="15" y1="12" x2="3" y2="12" />
+    </svg>
+  );
+}

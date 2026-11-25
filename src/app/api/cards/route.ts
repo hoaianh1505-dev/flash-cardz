@@ -10,6 +10,11 @@ function serializeCard(doc: {
   word: string;
   meanings: { text: string; type?: string; phonetic?: string }[];
   learned: boolean;
+  starred?: boolean;
+  note?: string;
+  reviewCount?: number;
+  wrongCount?: number;
+  nextReviewAt?: Date | string | null;
 }) {
   return {
     id: String(doc._id),
@@ -20,6 +25,11 @@ function serializeCard(doc: {
       ...(m.phonetic ? { phonetic: m.phonetic } : {}),
     })),
     learned: !!doc.learned,
+    starred: !!doc.starred,
+    note: doc.note || '',
+    reviewCount: doc.reviewCount || 0,
+    wrongCount: doc.wrongCount || 0,
+    nextReviewAt: doc.nextReviewAt ? new Date(doc.nextReviewAt).toISOString() : null,
   };
 }
 
@@ -36,14 +46,15 @@ export async function GET() {
     const [docs, user] = await Promise.all([
       Flashcard.find({ userId })
         .sort({ sortOrder: 1, createdAt: -1 })
-        .select('word meanings learned')
+        .select('word meanings learned starred note reviewCount wrongCount nextReviewAt')
         .lean(),
-      User.findById(userId).select('username daily').lean(),
+      User.findById(userId).select('username daily dailyGoal').lean(),
     ]);
 
     return NextResponse.json({
       cards: docs.map(serializeCard),
       daily: user?.daily || { streak: 0, lastDate: '', todayCount: 0 },
+      dailyGoal: user?.dailyGoal || 20,
     });
   } catch (err) {
     console.error('GET /api/cards error:', err);
@@ -60,6 +71,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const word = String(body?.word ?? '').trim();
+    const note = typeof body?.note === 'string' ? body.note.trim().slice(0, 400) : '';
     const rawMeanings = Array.isArray(body?.meanings) ? body.meanings : [];
     const meanings = rawMeanings
       .map((m: { text?: unknown; type?: unknown; phonetic?: unknown }) => ({
@@ -80,7 +92,6 @@ export async function POST(req: Request) {
     const userId = new mongoose.Types.ObjectId(session.userId);
     const wordLower = word.toLowerCase();
 
-    // Merge into existing card if the same word already exists for this user
     const existing = await Flashcard.findOne({ userId, wordLower });
     if (existing) {
       let addedAny = false;
@@ -93,6 +104,10 @@ export async function POST(req: Request) {
           addedAny = true;
         }
       }
+      if (note && note !== existing.note) {
+        existing.note = note;
+        addedAny = true;
+      }
       if (addedAny) {
         await existing.save();
       }
@@ -103,7 +118,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Place newly added card at the top (smallest sortOrder)
     const minCard = await Flashcard.findOne({ userId })
       .sort({ sortOrder: 1 })
       .select('sortOrder')
@@ -116,6 +130,10 @@ export async function POST(req: Request) {
       wordLower,
       meanings,
       learned: false,
+      starred: false,
+      note,
+      reviewCount: 0,
+      wrongCount: 0,
       sortOrder: nextSortOrder,
     });
 

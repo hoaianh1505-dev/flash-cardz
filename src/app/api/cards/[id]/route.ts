@@ -6,7 +6,6 @@ import { Flashcard } from '@/models/Flashcard';
 import { User } from '@/models/User';
 
 function todayStr(): string {
-  // Use Vietnam timezone (UTC+7) so daily streaks feel natural
   const now = new Date(Date.now() + 7 * 60 * 60 * 1000);
   const y = now.getUTCFullYear();
   const m = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -71,6 +70,24 @@ export async function PATCH(
 
     if (typeof body?.learned === 'boolean') {
       card.learned = body.learned;
+      card.reviewCount = (card.reviewCount || 0) + 1;
+      if (body.learned) {
+        // Light SRS: schedule next review further out as reviewCount grows (1d, 3d, 7d, 14d, 30d)
+        const intervals = [1, 3, 7, 14, 30];
+        const days = intervals[Math.min(card.reviewCount - 1, intervals.length - 1)] || 3;
+        card.nextReviewAt = new Date(Date.now() + days * 86400000);
+      } else {
+        card.wrongCount = (card.wrongCount || 0) + 1;
+        card.nextReviewAt = new Date();
+      }
+    }
+
+    if (typeof body?.starred === 'boolean') {
+      card.starred = body.starred;
+    }
+
+    if (typeof body?.note === 'string') {
+      card.note = body.note.trim().slice(0, 400);
     }
 
     await card.save();
@@ -104,6 +121,11 @@ export async function PATCH(
           ...(m.phonetic ? { phonetic: m.phonetic } : {}),
         })),
         learned: !!card.learned,
+        starred: !!card.starred,
+        note: card.note || '',
+        reviewCount: card.reviewCount || 0,
+        wrongCount: card.wrongCount || 0,
+        nextReviewAt: card.nextReviewAt ? card.nextReviewAt.toISOString() : null,
       },
       ...(daily ? { daily } : {}),
     });

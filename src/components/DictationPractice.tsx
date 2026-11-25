@@ -35,6 +35,14 @@ interface Props {
   onSpeak: (text: string, slow?: boolean) => void;
   onMarkLearned: (id: string, learned: boolean) => void;
   onMarkManyUnlearned: (ids: string[]) => void;
+  onSessionComplete?: (summary: {
+    mode: 'dictation';
+    score: number;
+    total: number;
+    durationSec: number;
+    missedWords: string[];
+    missedIds: string[];
+  }) => void;
 }
 
 export default function DictationPractice({
@@ -43,6 +51,7 @@ export default function DictationPractice({
   onSpeak,
   onMarkLearned,
   onMarkManyUnlearned,
+  onSessionComplete,
 }: Props) {
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [sessionSize, setSessionSize] = useState<10 | 20 | 50>(10);
@@ -55,6 +64,8 @@ export default function DictationPractice({
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [missed, setMissed] = useState<CardItem[]>([]);
+  const startedAtRef = useRef<number>(Date.now());
+  const reportedRef = useRef<boolean>(false);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -79,6 +90,8 @@ export default function DictationPractice({
       setScore(0);
       setStreak(0);
       setMissed([]);
+      startedAtRef.current = Date.now();
+      reportedRef.current = false;
       if (chosen[0]) {
         setTimeout(() => {
           onSpeak(targetTextOf(chosen[0].word), false);
@@ -100,6 +113,20 @@ export default function DictationPractice({
   const current = queue[idx] || null;
   const targetWord = current ? targetTextOf(current.word) : '';
   const finished = queue.length > 0 && idx >= queue.length;
+
+  useEffect(() => {
+    if (finished && !reportedRef.current && onSessionComplete) {
+      reportedRef.current = true;
+      onSessionComplete({
+        mode: 'dictation',
+        score,
+        total: queue.length,
+        durationSec: Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000)),
+        missedWords: missed.map((m) => m.word),
+        missedIds: missed.map((m) => m.id),
+      });
+    }
+  }, [finished, onSessionComplete, score, queue.length, missed]);
 
   const playAudio = useCallback(
     (slow = false) => {

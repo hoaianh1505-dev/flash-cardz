@@ -12,6 +12,7 @@ export interface IUser extends Document {
   displayName: string;
   passwordHash: string;
   daily: IDailyStats;
+  dailyGoal: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ const UserSchema = new Schema<IUser>(
     displayName: { type: String, trim: true, default: '' },
     passwordHash: { type: String, required: true },
     daily: { type: DailyStatsSchema, default: () => ({ streak: 0, lastDate: '', todayCount: 0 }) },
+    dailyGoal: { type: Number, default: 20, min: 5, max: 200 },
   },
   { timestamps: true }
 );

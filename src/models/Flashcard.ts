@@ -12,6 +12,11 @@ export interface IFlashcard extends Document {
   wordLower: string;
   meanings: IMeaning[];
   learned: boolean;
+  starred: boolean;
+  note: string;
+  reviewCount: number;
+  wrongCount: number;
+  nextReviewAt?: Date | null;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +38,11 @@ const FlashcardSchema = new Schema<IFlashcard>(
     wordLower: { type: String, required: true, lowercase: true },
     meanings: { type: [MeaningSchema], required: true },
     learned: { type: Boolean, default: false },
+    starred: { type: Boolean, default: false },
+    note: { type: String, default: '', trim: true, maxlength: 400 },
+    reviewCount: { type: Number, default: 0, min: 0 },
+    wrongCount: { type: Number, default: 0, min: 0 },
+    nextReviewAt: { type: Date, default: null },
     sortOrder: { type: Number, default: 0 },
   },
   { timestamps: true }
@@ -40,6 +50,7 @@ const FlashcardSchema = new Schema<IFlashcard>(
 
 FlashcardSchema.index({ userId: 1, wordLower: 1 });
 FlashcardSchema.index({ userId: 1, sortOrder: 1 });
+FlashcardSchema.index({ userId: 1, starred: 1 });
 
 export const Flashcard: Model<IFlashcard> =
   (mongoose.models.Flashcard as Model<IFlashcard>) ||
