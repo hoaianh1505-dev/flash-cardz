@@ -149,6 +149,7 @@ export default function WordFormGuide({ onSpeak }: Props) {
   const [section, setSection] = useState<SectionKey>('all');
   const [search, setSearch] = useState('');
   const [showAnswers, setShowAnswers] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   const q = search.trim().toLowerCase();
 
@@ -170,58 +171,76 @@ export default function WordFormGuide({ onSpeak }: Props) {
     <div className="wfWrap">
       {/* Header + Quick Filter & Search */}
       <section className="pagePanel wfIntroCard">
-        <div className="pagePanelHead" style={{ marginBottom: 12 }}>
+        <div className="pagePanelHead" style={{ marginBottom: filtersCollapsed ? 0 : 12 }}>
           <div>
             <h1 className="pageTitle">Cẩm Nang Hậu Tố Tiếng Anh (Word Form: N – V – Adj – Adv)</h1>
-            <p className="pageSub">
-              Bản học mở rộng · Ý nghĩa hậu tố · Ví dụ có dịch · Ngoại lệ · Bảng họ từ · 20 câu bài
-              tập &amp; đáp án.
-            </p>
+            {!filtersCollapsed && (
+              <p className="pageSub">
+                Bản học mở rộng · Ý nghĩa hậu tố · Ví dụ có dịch · Ngoại lệ · Bảng họ từ · 20 câu
+                bài tập &amp; đáp án.
+              </p>
+            )}
           </div>
-          <div className="searchFieldWrap" style={{ minWidth: 260 }}>
-            <IconSearch size={16} className="searchFieldIcon" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm hậu tố (-tion, -able...) hoặc ví dụ..."
-            />
-          </div>
-        </div>
-
-        <div className="wfUsageBox">
-          <b>Cách sử dụng:</b> 1. Nhìn hậu tố để dự đoán từ loại và nghĩa · 2. Đọc ví dụ, chú ý sự
-          đổi chính tả · 3. Kiểm tra vị trí từ trong câu · 4. Học theo họ từ; không học thuộc hậu tố
-          như quy tắc tuyệt đối.
-          <div className="wfUsageSub">
-            Quy ước: <b>N</b> = danh từ; <b>V</b> = động từ; <b>Adj</b> = tính từ; <b>Adv</b> =
-            trạng từ. Dấu → biểu thị cách liên hệ/hình thành từ; đôi khi dạng gốc thay đổi chính tả.
-          </div>
-        </div>
-
-        <div className="catChips" style={{ marginBottom: 0 }}>
-          {(
-            [
-              ['all', 'Xem toàn bộ'],
-              ['noun', '1. Danh từ (27)'],
-              ['adj', '2. Tính từ (24)'],
-              ['verb', '3. Động từ (4)'],
-              ['adv', '4. Trạng từ (4)'],
-              ['exc', '5. Ngoại lệ'],
-              ['family', '6. Bảng họ từ (16)'],
-              ['tips', '7. Mẹo xác định'],
-              ['ex', '8. Bài tập (20)'],
-            ] as const
-          ).map(([k, label]) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {!filtersCollapsed && (
+              <div className="searchFieldWrap" style={{ minWidth: 260 }}>
+                <IconSearch size={16} className="searchFieldIcon" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Tìm hậu tố (-tion, -able...) hoặc ví dụ..."
+                />
+              </div>
+            )}
             <button
-              key={k}
               type="button"
-              className={`chip ${section === k ? 'active' : ''}`}
-              onClick={() => setSection(k)}
+              className="ghost small"
+              onClick={() => setFiltersCollapsed((v) => !v)}
             >
-              {label}
+              {filtersCollapsed ? 'Hiện bộ lọc ▼' : 'Ẩn bộ lọc ▲'}
             </button>
-          ))}
+          </div>
         </div>
+
+        {!filtersCollapsed && (
+          <>
+            <div className="wfUsageBox">
+              <b>Cách sử dụng:</b> 1. Nhìn hậu tố để dự đoán từ loại và nghĩa · 2. Đọc ví dụ, chú ý
+              sự đổi chính tả · 3. Kiểm tra vị trí từ trong câu · 4. Học theo họ từ; không học
+              thuộc hậu tố như quy tắc tuyệt đối.
+              <div className="wfUsageSub">
+                Quy ước: <b>N</b> = danh từ; <b>V</b> = động từ; <b>Adj</b> = tính từ; <b>Adv</b> =
+                trạng từ. Dấu → biểu thị cách liên hệ/hình thành từ; đôi khi dạng gốc thay đổi
+                chính tả.
+              </div>
+            </div>
+
+            <div className="catChips" style={{ marginBottom: 0 }}>
+              {(
+                [
+                  ['all', 'Xem toàn bộ'],
+                  ['noun', '1. Danh từ (27)'],
+                  ['adj', '2. Tính từ (24)'],
+                  ['verb', '3. Động từ (4)'],
+                  ['adv', '4. Trạng từ (4)'],
+                  ['exc', '5. Ngoại lệ'],
+                  ['family', '6. Bảng họ từ (16)'],
+                  ['tips', '7. Mẹo xác định'],
+                  ['ex', '8. Bài tập (20)'],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`chip ${section === k ? 'active' : ''}`}
+                  onClick={() => setSection(k)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       {/* 1. HẬU TỐ DANH TỪ */}
