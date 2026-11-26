@@ -2,36 +2,47 @@ import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectDB } from '@/lib/mongodb';
 import { getSessionUser } from '@/lib/auth';
-import { GameScore } from '@/models/GameScore';
-import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/security';
+import { GameId, GameScore } from '@/models/GameScore';
+import { checkRateLimit, getClientIp, rateLimitResponse, sanitizeText } from '@/lib/security';
 
-export async function GET() {
+const VALID_GAMES = new Set<GameId>(['plane-shooter', 'match-pairs', 'word-scramble']);
+
+function parseGame(raw: unknown): GameId {
+  return VALID_GAMES.has(raw as GameId) ? (raw as GameId) : 'plane-shooter';
+}
+
+export async function GET(req: Request) {
   try {
     const session = await getSessionUser();
     if (!session) {
       return NextResponse.json({ error: 'Chưa đăng nhập.' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const game = parseGame(searchParams.get('game'));
+
     await connectDB();
     const userId = new mongoose.Types.ObjectId(session.userId);
 
     const [bestDoc, recentDocs, topDocs] = await Promise.all([
-      GameScore.findOne({ userId, game: 'plane-shooter' }).sort({ score: -1 }).lean(),
-      GameScore.find({ userId, game: 'plane-shooter' }).sort({ createdAt: -1 }).limit(10).lean(),
-      GameScore.find({ game: 'plane-shooter' })
+      GameScore.findOne({ userId, game }).sort({ score: -1 }).lean(),
+      GameScore.find({ userId, game }).sort({ createdAt: -1 }).limit(10).lean(),
+      GameScore.find({ game })
         .sort({ score: -1, createdAt: -1 })
         .limit(10)
-        .select('displayName subMode score wordsCleared maxCombo wave createdAt')
+        .select('displayName subMode score wordsCleared maxCombo wave durationSec createdAt')
         .lean(),
     ]);
 
     return NextResponse.json({
+      game,
       personalBest: bestDoc
         ? {
             score: bestDoc.score,
             wordsCleared: bestDoc.wordsCleared,
             maxCombo: bestDoc.maxCombo,
             wave: bestDoc.wave,
+            durationSec: bestDoc.durationSec,
           }
         : null,
       recent: recentDocs.map((d) => ({
@@ -52,6 +63,7 @@ export async function GET() {
         wordsCleared: d.wordsCleared,
         maxCombo: d.maxCombo,
         wave: d.wave,
+        durationSec: d.durationSec,
         createdAt: d.createdAt ? new Date(d.createdAt).toISOString() : new Date().toISOString(),
       })),
     });
@@ -64,7 +76,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req);
-    const rl = checkRateLimit(`games:score:${ip}`, 30, 10 * 60_000);
+    const rl = checkRateLimit(`games:score:${ip}`, 40, 10 * 60_000);
     if (!rl.ok) {
       return rateLimitResponse(rl.retryAfterSec);
     }
@@ -75,7 +87,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const subMode = body?.subMode === 'typing' ? 'typing' : 'tap';
+    const game = parseGame(body?.game);
+    const subMode = sanitizeText(body?.subMode || 'default', 24) || 'default';
     const score = Math.max(0, Math.min(1_000_000, Math.round(Number(body?.score) || 0)));
     const wordsCleared = Math.max(0, Math.min(10_000, Math.round(Number(body?.wordsCleared) || 0)));
     const maxCombo = Math.max(0, Math.min(10_000, Math.round(Number(body?.maxCombo) || 0)));
@@ -85,7 +98,7 @@ export async function POST(req: Request) {
     await connectDB();
     const userId = new mongoose.Types.ObjectId(session.userId);
 
-    const prevBest = await GameScore.findOne({ userId, game: 'plane-shooter' })
+    const prevBest = await GameScore.findOne({ userId, game })
       .sort({ score: -1 })
       .select('score')
       .lean();
@@ -94,7 +107,7 @@ export async function POST(req: Request) {
     const created = await GameScore.create({
       userId,
       displayName: session.displayName || session.username,
-      game: 'plane-shooter',
+      game,
       subMode,
       score,
       wordsCleared,

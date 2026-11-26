@@ -331,3 +331,36 @@ export function IconPlane({ size, ...p }: IconProps) {
     </svg>
   );
 }
+
+export function IconGamepad({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <line x1="6" y1="12" x2="10" y2="12" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="15" y1="13" x2="15.01" y2="13" />
+      <line x1="18" y1="11" x2="18.01" y2="11" />
+      <rect x="2" y="6" width="20" height="12" rx="4" />
+    </svg>
+  );
+}
+
+export function IconGrid({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+export function IconType({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+    </svg>
+  );
+}

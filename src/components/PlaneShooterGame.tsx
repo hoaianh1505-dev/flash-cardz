@@ -142,7 +142,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       return;
     }
     try {
-      const res = await fetch('/api/games/scores', { cache: 'no-store' });
+      const res = await fetch('/api/games/scores?game=plane-shooter', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setPersonalBest(data.personalBest || null);
@@ -194,6 +194,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            game: 'plane-shooter',
             subMode,
             score: finalScore,
             wordsCleared: cleared,

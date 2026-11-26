@@ -5,8 +5,10 @@ import defaultToeic from '@/data/default-toeic.json';
 import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/pos';
 import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
+import MatchPairsGame from './MatchPairsGame';
 import PlaneShooterGame from './PlaneShooterGame';
 import Toast, { ToastType } from './Toast';
+import WordScrambleGame from './WordScrambleGame';
 import {
   IconBarChart,
   IconBook,
@@ -15,6 +17,8 @@ import {
   IconDownload,
   IconEdit,
   IconFlame,
+  IconGamepad,
+  IconGrid,
   IconHeadphones,
   IconLayers,
   IconList,
@@ -33,6 +37,7 @@ import {
   IconStar,
   IconSun,
   IconTrash,
+  IconType,
   IconUpload,
   IconUser,
   IconVolume,
@@ -94,8 +99,9 @@ interface QuizState {
   reported: boolean;
 }
 
-type MainTab = 'study' | 'practice' | 'library' | 'irregular' | 'stats';
-type PracticeSubTab = 'dictation' | 'quiz' | 'plane';
+type MainTab = 'study' | 'practice' | 'games' | 'library' | 'irregular' | 'stats';
+type PracticeSubTab = 'dictation' | 'quiz';
+type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble';
 
 const GUEST_CARDS_KEY = 'flashcardx_guest_cards_v1';
 const GUEST_DAILY_KEY = 'flashcardx_guest_daily_v1';
@@ -173,6 +179,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   // App Shell navigation
   const [activeTab, setActiveTab] = useState<MainTab>('study');
   const [practiceMode, setPracticeMode] = useState<PracticeSubTab>('dictation');
+  const [activeGame, setActiveGame] = useState<GameSubTab>('plane-shooter');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Study tab state
@@ -317,6 +324,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           reverseMode: boolean;
           activeTab: MainTab;
           practiceMode: PracticeSubTab;
+          activeGame: GameSubTab;
           mode: 'all' | 'unlearned' | 'learned' | 'starred';
           typeFilter: 'all' | PosKey;
           libLimit: 25 | 50 | 100;
@@ -326,11 +334,21 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         }>;
         if (typeof p.autoSpeak === 'boolean') setAutoSpeak(p.autoSpeak);
         if (typeof p.reverseMode === 'boolean') setReverseMode(p.reverseMode);
-        if (p.activeTab && ['study', 'practice', 'library', 'irregular', 'stats'].includes(p.activeTab)) {
+        if (
+          p.activeTab &&
+          ['study', 'practice', 'games', 'library', 'irregular', 'stats'].includes(p.activeTab)
+        ) {
           setActiveTab(p.activeTab);
         }
-        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz' || p.practiceMode === 'plane') {
+        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz') {
           setPracticeMode(p.practiceMode);
+        }
+        if (
+          p.activeGame === 'plane-shooter' ||
+          p.activeGame === 'match-pairs' ||
+          p.activeGame === 'word-scramble'
+        ) {
+          setActiveGame(p.activeGame);
         }
         if (p.mode && ['all', 'unlearned', 'learned', 'starred'].includes(p.mode)) {
           setMode(p.mode);
@@ -916,6 +934,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           reverseMode,
           activeTab,
           practiceMode,
+          activeGame,
           mode,
           typeFilter,
           libLimit,
@@ -933,6 +952,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     reverseMode,
     activeTab,
     practiceMode,
+    activeGame,
     mode,
     typeFilter,
     libLimit,
@@ -1621,6 +1641,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const pageTitleMap: Record<MainTab, string> = {
     study: 'Học thẻ Flashcard',
     practice: 'Phòng luyện tập',
+    games: 'Trò chơi từ vựng',
     library: 'Danh sách từ vựng',
     irregular: 'Động từ bất quy tắc',
     stats: 'Thống kê & Tiến độ',
@@ -1690,6 +1711,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           >
             <IconHeadphones size={18} />
             <span>Luyện tập</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebarItem ${activeTab === 'games' ? 'active' : ''}`}
+            onClick={() => switchTab('games')}
+          >
+            <IconGamepad size={18} />
+            <span>Trò chơi</span>
           </button>
           <button
             type="button"
@@ -2255,22 +2284,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                       <span>Chọn nhanh 4 đáp án (phím 1–4)</span>
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={practiceMode === 'plane'}
-                    className={`practiceModeBtn ${practiceMode === 'plane' ? 'active' : ''}`}
-                    onClick={() => {
-                      stopSpeech();
-                      setPracticeMode('plane');
-                    }}
-                  >
-                    <IconPlane size={18} />
-                    <div>
-                      <b>Bắn máy bay từ vựng</b>
-                      <span>Hạ máy bay &amp; đua Top điểm</span>
-                    </div>
-                  </button>
                 </div>
               </div>
 
@@ -2282,13 +2295,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                   onMarkLearned={setCardLearnedById}
                   onMarkManyUnlearned={markManyUnlearned}
                   onSessionComplete={recordPracticeSession}
-                />
-              ) : practiceMode === 'plane' ? (
-                <PlaneShooterGame
-                  cards={cards}
-                  isGuest={isGuest}
-                  onSpeak={speak}
-                  onToast={showToast}
                 />
               ) : (
                 <div className="dictWrap">
@@ -2498,6 +2504,96 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                       })()
                     ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== TAB: TRÒ CHƠI (GAME HUB) ==================== */}
+          {activeTab === 'games' && (
+            <div className="innerPageWrap">
+              <div className="practiceHeader">
+                <div>
+                  <h2 className="pageTitle">Trung tâm trò chơi từ vựng</h2>
+                  <p className="pageSub">
+                    Vừa chơi vừa nhớ từ nhanh hơn · Điểm kỷ lục &amp; bảng xếp hạng lưu tự động.
+                  </p>
+                </div>
+
+                <div className="practiceModeSwitch" role="tablist" aria-label="Chọn trò chơi">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeGame === 'plane-shooter'}
+                    className={`practiceModeBtn ${activeGame === 'plane-shooter' ? 'active' : ''}`}
+                    onClick={() => {
+                      stopSpeech();
+                      setActiveGame('plane-shooter');
+                    }}
+                  >
+                    <IconPlane size={18} />
+                    <div>
+                      <b>Bắn máy bay</b>
+                      <span>Chạm bắn &amp; gõ từ</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeGame === 'match-pairs'}
+                    className={`practiceModeBtn ${activeGame === 'match-pairs' ? 'active' : ''}`}
+                    onClick={() => {
+                      stopSpeech();
+                      setActiveGame('match-pairs');
+                    }}
+                  >
+                    <IconGrid size={18} />
+                    <div>
+                      <b>Ghép cặp tốc độ</b>
+                      <span>Nối 6–8 cặp Anh–Việt</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeGame === 'word-scramble'}
+                    className={`practiceModeBtn ${activeGame === 'word-scramble' ? 'active' : ''}`}
+                    onClick={() => {
+                      stopSpeech();
+                      setActiveGame('word-scramble');
+                    }}
+                  >
+                    <IconType size={18} />
+                    <div>
+                      <b>Xếp chữ 60 giây</b>
+                      <span>Ghép chữ cái siêu tốc</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {activeGame === 'plane-shooter' && (
+                <PlaneShooterGame
+                  cards={cards}
+                  isGuest={isGuest}
+                  onSpeak={speak}
+                  onToast={showToast}
+                />
+              )}
+              {activeGame === 'match-pairs' && (
+                <MatchPairsGame
+                  cards={cards}
+                  isGuest={isGuest}
+                  onSpeak={speak}
+                  onToast={showToast}
+                />
+              )}
+              {activeGame === 'word-scramble' && (
+                <WordScrambleGame
+                  cards={cards}
+                  isGuest={isGuest}
+                  onSpeak={speak}
+                  onToast={showToast}
+                />
               )}
             </div>
           )}
@@ -3096,6 +3192,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         >
           <IconHeadphones size={19} />
           <span>Luyện tập</span>
+        </button>
+        <button
+          type="button"
+          className={`mobileNavBtn ${activeTab === 'games' ? 'active' : ''}`}
+          onClick={() => switchTab('games')}
+        >
+          <IconGamepad size={19} />
+          <span>Trò chơi</span>
         </button>
         <button
           type="button"

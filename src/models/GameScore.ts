@@ -1,10 +1,12 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
+export type GameId = 'plane-shooter' | 'match-pairs' | 'word-scramble';
+
 export interface IGameScore extends Document {
   userId: Types.ObjectId;
   displayName: string;
-  game: 'plane-shooter';
-  subMode: 'tap' | 'typing';
+  game: GameId;
+  subMode: string;
   score: number;
   wordsCleared: number;
   maxCombo: number;
@@ -17,8 +19,13 @@ const GameScoreSchema = new Schema<IGameScore>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     displayName: { type: String, required: true, trim: true, maxlength: 48 },
-    game: { type: String, enum: ['plane-shooter'], default: 'plane-shooter', index: true },
-    subMode: { type: String, enum: ['tap', 'typing'], default: 'tap' },
+    game: {
+      type: String,
+      enum: ['plane-shooter', 'match-pairs', 'word-scramble'],
+      default: 'plane-shooter',
+      index: true,
+    },
+    subMode: { type: String, default: 'default', maxlength: 24 },
     score: { type: Number, required: true, min: 0, max: 1_000_000 },
     wordsCleared: { type: Number, required: true, min: 0, max: 10_000 },
     maxCombo: { type: Number, default: 0, min: 0, max: 10_000 },
