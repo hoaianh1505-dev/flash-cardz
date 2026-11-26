@@ -49,12 +49,94 @@ interface ExplosionFx {
 interface ScoreEntry {
   id: string;
   displayName?: string;
-  subMode: 'tap' | 'typing';
+  subMode: string;
   score: number;
   wordsCleared: number;
   maxCombo: number;
   wave: number;
   createdAt: string;
+}
+
+type DifficultyKey = 'easy' | 'normal' | 'hard' | 'extreme' | 'hell';
+
+const DIFFICULTIES: Record<
+  DifficultyKey,
+  {
+    label: string;
+    speedMul: number;
+    spawnBase: number;
+    maxPlanes: number;
+    bossBaseHp: number;
+    bossSpeedMul: number;
+    lives: number;
+    scoreMul: number;
+    bossEvery: number;
+  }
+> = {
+  easy: {
+    label: 'Dễ',
+    speedMul: 0.72,
+    spawnBase: 4.1,
+    maxPlanes: 3,
+    bossBaseHp: 3,
+    bossSpeedMul: 0.75,
+    lives: 4,
+    scoreMul: 1.0,
+    bossEvery: 7,
+  },
+  normal: {
+    label: 'Trung bình',
+    speedMul: 1.0,
+    spawnBase: 3.4,
+    maxPlanes: 4,
+    bossBaseHp: 4,
+    bossSpeedMul: 1.0,
+    lives: 3,
+    scoreMul: 1.3,
+    bossEvery: 6,
+  },
+  hard: {
+    label: 'Khó',
+    speedMul: 1.32,
+    spawnBase: 2.6,
+    maxPlanes: 5,
+    bossBaseHp: 5,
+    bossSpeedMul: 1.25,
+    lives: 3,
+    scoreMul: 1.7,
+    bossEvery: 6,
+  },
+  extreme: {
+    label: 'Siêu khó',
+    speedMul: 1.65,
+    spawnBase: 2.0,
+    maxPlanes: 6,
+    bossBaseHp: 6,
+    bossSpeedMul: 1.5,
+    lives: 2,
+    scoreMul: 2.2,
+    bossEvery: 5,
+  },
+  hell: {
+    label: 'Địa ngục',
+    speedMul: 2.05,
+    spawnBase: 1.45,
+    maxPlanes: 7,
+    bossBaseHp: 7,
+    bossSpeedMul: 1.85,
+    lives: 2,
+    scoreMul: 3.0,
+    bossEvery: 5,
+  },
+};
+
+const DIFF_ORDER: DifficultyKey[] = ['easy', 'normal', 'hard', 'extreme', 'hell'];
+
+function formatSubMode(raw: string): string {
+  const [m, d] = raw.split(':');
+  const modeTxt = m === 'typing' ? 'Gõ chữ' : 'Chạm bắn';
+  const diffTxt = DIFFICULTIES[d as DifficultyKey]?.label;
+  return diffTxt ? `${modeTxt} · ${diffTxt}` : modeTxt;
 }
 
 interface Props {
@@ -201,10 +283,14 @@ function BossShipSvg() {
 
 export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: Props) {
   const [subMode, setSubMode] = useState<'tap' | 'typing'>('typing');
+  const [difficulty, setDifficulty] = useState<DifficultyKey>('normal');
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'over'>('idle');
   const [confirmExit, setConfirmExit] = useState(false);
   const [sfxOn, setSfxOn] = useState(true);
+
+  const diffCfg = DIFFICULTIES[difficulty];
+  const maxLives = diffCfg.lives;
 
   // Live state
   const [score, setScore] = useState(0);
@@ -386,6 +472,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       savedRunRef.current = true;
       const durationSec = Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000));
 
+      const modeTag = `${subMode}:${difficulty}`;
       if (isGuest) {
         try {
           const raw = localStorage.getItem(GUEST_GAME_KEY);
@@ -395,7 +482,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           const entry: ScoreEntry = {
             id: `g-${Date.now()}`,
             displayName: 'Khách',
-            subMode,
+            subMode: modeTag,
             score: finalScore,
             wordsCleared: cleared,
             maxCombo: bestCombo,
@@ -417,7 +504,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             game: 'plane-shooter',
-            subMode,
+            subMode: modeTag,
             score: finalScore,
             wordsCleared: cleared,
             maxCombo: bestCombo,
@@ -434,7 +521,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         /* ignore */
       }
     },
-    [isGuest, subMode, loadScores]
+    [isGuest, subMode, difficulty, loadScores]
   );
 
   const buildBossTapChoices = useCallback(
@@ -452,7 +539,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     (curWave: number) => {
       if (!pool.length) return;
       const card = pool[Math.floor(Math.random() * pool.length)];
-      const maxHp = Math.min(5, 3 + Math.floor(curWave / 3));
+      const maxHp = Math.min(9, diffCfg.bossBaseHp + Math.floor(curWave / 3));
       const newBoss: BossEntity = {
         uid: `boss-${Date.now()}`,
         name: BOSS_NAMES[(curWave - 1) % BOSS_NAMES.length],
@@ -474,7 +561,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       triggerBanner(`CẢNH BÁO: BOSS ${newBoss.name} XUẤT HIỆN!`, 'boss');
       onSpeak(newBoss.targetWord, false);
     },
-    [pool, subMode, buildBossTapChoices, playSfx, triggerBanner, onSpeak]
+    [pool, diffCfg.bossBaseHp, subMode, buildBossTapChoices, playSfx, triggerBanner, onSpeak]
   );
 
   const spawnTapSquadron = useCallback(
@@ -483,7 +570,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       const picked = shuffleArray(pool).slice(0, 3);
       const target = picked[0];
       const lanes = shuffleArray([20, 50, 80]);
-      const baseSpeed = Math.min(15.5, 6.5 + curWave * 1.0);
+      const baseSpeed = Math.min(24, (6.4 + curWave * 0.95) * diffCfg.speedMul);
       const variants: PlaneEnemy['variant'][] = ['scout', 'interceptor', 'heavy'];
 
       const squad: PlaneEnemy[] = picked.map((card, i) => ({
@@ -502,15 +589,15 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       setEnemies(squad);
       onSpeak(cleanTargetWord(target.word), false);
     },
-    [pool, onSpeak]
+    [pool, diffCfg.speedMul, onSpeak]
   );
 
   const spawnTypingPlane = useCallback(
     (curWave: number) => {
       if (!pool.length || bossRef.current) return;
       const card = pool[Math.floor(Math.random() * pool.length)];
-      const lane = 15 + Math.random() * 70;
-      const speed = Math.min(12.5, 4.6 + curWave * 0.75);
+      const lane = 14 + Math.random() * 72;
+      const speed = Math.min(20, (4.5 + curWave * 0.7) * diffCfg.speedMul);
       const variant: PlaneEnemy['variant'] =
         card.word.length >= 9 ? 'heavy' : card.word.length >= 6 ? 'interceptor' : 'scout';
       const plane: PlaneEnemy = {
@@ -524,9 +611,9 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         isTarget: true,
         variant,
       };
-      setEnemies((prev) => (prev.length >= 4 ? prev : [...prev, plane]));
+      setEnemies((prev) => (prev.length >= diffCfg.maxPlanes ? prev : [...prev, plane]));
     },
-    [pool]
+    [pool, diffCfg.speedMul, diffCfg.maxPlanes]
   );
 
   const fireFx = useCallback(
@@ -553,7 +640,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       return;
     }
     setScore(0);
-    setLives(3);
+    setLives(diffCfg.lives);
     setCombo(0);
     setMaxCombo(0);
     setWordsCleared(0);
@@ -571,7 +658,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     wordsClearedRef.current = 0;
     maxComboRef.current = 0;
     waveRef.current = 1;
-    nextBossAtRef.current = 6;
+    nextBossAtRef.current = diffCfg.bossEvery;
     prevTierRef.current = 1;
     startedAtRef.current = Date.now();
     savedRunRef.current = false;
@@ -585,7 +672,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       spawnTypingPlane(1);
       setTimeout(() => inputRef.current?.focus(), 80);
     }
-  }, [pool.length, onToast, subMode, spawnTapSquadron, spawnTypingPlane]);
+  }, [pool.length, onToast, diffCfg.lives, diffCfg.bossEvery, subMode, spawnTapSquadron, spawnTypingPlane]);
 
   // 60fps loop (handles normal planes + Boss patrol & slow descent)
   useEffect(() => {
@@ -601,7 +688,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       if (bossRef.current) {
         setBoss((prev) => {
           if (!prev) return null;
-          let nx = prev.x + prev.dir * 12 * dt;
+          let nx = prev.x + prev.dir * 12 * diffCfg.bossSpeedMul * dt;
           let ndir = prev.dir;
           if (nx > 78) {
             nx = 78;
@@ -610,7 +697,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
             nx = 22;
             ndir = 1;
           }
-          const ny = prev.y + 1.55 * dt;
+          const ny = prev.y + 1.55 * diffCfg.bossSpeedMul * dt;
           if (ny >= 74) {
             breached = true;
             bossRef.current = null;
@@ -636,7 +723,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
 
         if (subMode === 'typing') {
           spawnTimerRef.current += dt;
-          const interval = Math.max(1.9, 3.6 - waveRef.current * 0.2);
+          const interval = Math.max(0.85, diffCfg.spawnBase - waveRef.current * 0.16);
           if (spawnTimerRef.current >= interval) {
             spawnTimerRef.current = 0;
             spawnTypingPlane(waveRef.current);
@@ -671,7 +758,18 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     lastTickRef.current = performance.now();
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [phase, confirmExit, subMode, playSfx, triggerShake, saveScore, spawnTapSquadron, spawnTypingPlane]);
+  }, [
+    phase,
+    confirmExit,
+    subMode,
+    diffCfg.bossSpeedMul,
+    diffCfg.spawnBase,
+    playSfx,
+    triggerShake,
+    saveScore,
+    spawnTapSquadron,
+    spawnTypingPlane,
+  ]);
 
   // Check upgrade tier notification
   const checkShipUpgrade = useCallback(
@@ -702,16 +800,16 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     const remainingHp = cur.hp - 1;
     if (remainingHp <= 0) {
       // BOSS DEFEATED!
-      const bonus = 500 + waveRef.current * 100;
+      const bonus = Math.round((500 + waveRef.current * 100) * diffCfg.scoreMul);
       scoreRef.current += bonus;
       wordsClearedRef.current += 1;
       waveRef.current += 1;
-      nextBossAtRef.current = wordsClearedRef.current + 6;
+      nextBossAtRef.current = wordsClearedRef.current + diffCfg.bossEvery;
 
       setScore(scoreRef.current);
       setWordsCleared(wordsClearedRef.current);
       setWave(waveRef.current);
-      setLives((lv) => Math.min(3, lv + 1)); // Heal +1 heart!
+      setLives((lv) => Math.min(maxLives, lv + 1)); // Heal +1 heart!
       fireFx(cur.x, cur.y, `BOSS +${bonus}!`, tierNow, true);
       triggerShake(false);
       playSfx('upgrade');
@@ -727,7 +825,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         else spawnTypingPlane(waveRef.current);
       }, 650);
     } else {
-      const pts = 150;
+      const pts = Math.round(150 * diffCfg.scoreMul);
       scoreRef.current += pts;
       setScore(scoreRef.current);
       fireFx(cur.x, cur.y, `-${1} HP · +${pts}`, tierNow, false);
@@ -759,6 +857,9 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     triggerBanner,
     checkShipUpgrade,
     subMode,
+    diffCfg.scoreMul,
+    diffCfg.bossEvery,
+    maxLives,
     spawnTapSquadron,
     spawnTypingPlane,
     pool,
@@ -769,7 +870,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     (enemy: PlaneEnemy) => {
       const nextCombo = combo + 1;
       const nextMaxCombo = Math.max(maxCombo, nextCombo);
-      const pts = 100 + Math.min(nextCombo, 10) * 20;
+      const pts = Math.round((100 + Math.min(nextCombo, 10) * 20) * diffCfg.scoreMul);
       const nextScore = scoreRef.current + pts;
       const nextCleared = wordsClearedRef.current + 1;
       const nextWave = 1 + Math.floor(nextCleared / 5);
@@ -819,6 +920,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       onSpeak,
       checkShipUpgrade,
       spawnBoss,
+      diffCfg.scoreMul,
       subMode,
       lives,
       spawnTapSquadron,
@@ -959,6 +1061,24 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         </div>
 
         <div className="dictToolbarGroup">
+          <span className="dictToolbarLabel">Độ khó:</span>
+          <div className="segGroup">
+            {DIFF_ORDER.map((dk) => (
+              <button
+                key={dk}
+                type="button"
+                className={`segBtn ${difficulty === dk ? 'active' : ''} ${
+                  dk === 'hell' ? 'diffHellBtn' : dk === 'extreme' ? 'diffExtremeBtn' : ''
+                }`}
+                onClick={() => setDifficulty(dk)}
+              >
+                {DIFFICULTIES[dk].label} (×{DIFFICULTIES[dk].scoreMul})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="dictToolbarGroup">
           <span className="dictToolbarLabel">Nguồn từ:</span>
           <div className="segGroup">
             {(
@@ -1022,8 +1142,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                   <div className="rankInfo">
                     <b>{row.displayName || 'Người chơi'}</b>
                     <span>
-                      Wave {row.wave} · {row.wordsCleared} từ ·{' '}
-                      {row.subMode === 'typing' ? 'Gõ chữ' : 'Chạm bắn'}
+                      Wave {row.wave} · {row.wordsCleared} từ · {formatSubMode(row.subMode)}
                     </span>
                   </div>
                   <b className="rankScore">{row.score}</b>
@@ -1045,8 +1164,8 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
               <div>
                 <div className="gameFsTitle">Bắn máy bay từ vựng</div>
                 <div className="gameFsSub">
-                  Chiến cơ: <b style={{ color: shipTier.color }}>{shipTier.name}</b> (Lv.
-                  {shipTier.level})
+                  <span className={`diffBadge diff-${difficulty}`}>{diffCfg.label} ×{diffCfg.scoreMul}</span>{' '}
+                  · <b style={{ color: shipTier.color }}>{shipTier.name}</b> (Lv.{shipTier.level})
                 </div>
               </div>
             </div>
@@ -1065,7 +1184,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                 <b>×{combo}</b>
               </div>
               <div className="planeHudLives" aria-label={`Còn ${lives} mạng`}>
-                {[0, 1, 2].map((i) => (
+                {Array.from({ length: maxLives }).map((_, i) => (
                   <span key={i} className={`lifeDot ${i < lives ? 'on' : ''}`} />
                 ))}
               </div>
@@ -1111,7 +1230,11 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           )}
 
           {/* Full-Height Starfield Radar Sky */}
-          <div className={`planeSky fsSky ${damageFlash ? 'hurtFlash' : ''}`}>
+          <div
+            className={`planeSky fsSky ${damageFlash ? 'hurtFlash' : ''} ${
+              difficulty === 'hell' ? 'hellSky' : difficulty === 'extreme' ? 'extremeSky' : ''
+            }`}
+          >
             <div className="starfieldLayer slow" aria-hidden="true" />
             <div className="starfieldLayer fast" aria-hidden="true" />
             <div className="planeRadarGrid" aria-hidden="true" />

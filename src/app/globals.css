@@ -6472,3 +6472,49 @@ body {
   from { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
   to { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
 }
+
+
+/* 5 Difficulty Tiers (Easy · Normal · Hard · Extreme · Hell) */
+.segBtn.diffExtremeBtn.active {
+  background: #b5671f;
+  color: #fff;
+}
+
+.segBtn.diffHellBtn.active {
+  background: #a52a2a;
+  color: #fff;
+}
+
+.diffBadge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(121, 216, 183, 0.18);
+  color: #79d8b7;
+}
+
+.diffBadge.diff-hard {
+  background: rgba(244, 211, 130, 0.2);
+  color: #f4d382;
+}
+
+.diffBadge.diff-extreme {
+  background: rgba(245, 158, 108, 0.22);
+  color: #f59e6c;
+}
+
+.diffBadge.diff-hell {
+  background: rgba(224, 79, 62, 0.28);
+  color: #ff9c8f;
+}
+
+.planeSky.extremeSky {
+  background: #1a1820;
+}
+
+.planeSky.hellSky {
+  background: radial-gradient(circle at 50% 20%, #2e1518 0%, #160d10 75%);
+}
