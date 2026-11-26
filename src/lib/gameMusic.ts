@@ -20,8 +20,13 @@ class GameMusicEngine {
     if (!this.ctx) {
       this.ctx = new AudioCtx();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 0.13;
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain.gain.value = 0.44;
+      const comp = this.ctx.createDynamicsCompressor();
+      comp.threshold.value = -12;
+      comp.knee.value = 8;
+      comp.ratio.value = 8;
+      this.masterGain.connect(comp);
+      comp.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});

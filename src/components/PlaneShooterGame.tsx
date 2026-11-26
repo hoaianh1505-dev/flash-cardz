@@ -680,7 +680,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(760, now);
           osc.frequency.exponentialRampToValueAtTime(220, now + 0.09);
-          gain.gain.setValueAtTime(0.11, now);
+          gain.gain.setValueAtTime(0.24, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
           osc.start(now);
           osc.stop(now + 0.1);
@@ -688,7 +688,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(160, now);
           osc.frequency.exponentialRampToValueAtTime(42, now + 0.22);
-          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.setValueAtTime(0.3, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
           osc.start(now);
           osc.stop(now + 0.24);
@@ -697,7 +697,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           osc.frequency.setValueAtTime(523, now);
           osc.frequency.setValueAtTime(659, now + 0.08);
           osc.frequency.setValueAtTime(784, now + 0.16);
-          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.setValueAtTime(0.28, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
           osc.start(now);
           osc.stop(now + 0.34);
@@ -705,7 +705,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(190, now);
           osc.frequency.setValueAtTime(140, now + 0.18);
-          gain.gain.setValueAtTime(0.13, now);
+          gain.gain.setValueAtTime(0.28, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
           osc.start(now);
           osc.stop(now + 0.42);
@@ -713,7 +713,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           osc.type = 'square';
           osc.frequency.setValueAtTime(130, now);
           osc.frequency.linearRampToValueAtTime(80, now + 0.18);
-          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.setValueAtTime(0.24, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
           osc.start(now);
           osc.stop(now + 0.2);
