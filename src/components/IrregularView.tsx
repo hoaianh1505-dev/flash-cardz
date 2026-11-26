@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import irregularVerbs from '@/data/irregular-verbs.json';
-import { keyOf } from '@/lib/pos';
+import { capFirst, keyOf } from '@/lib/pos';
 import { IconEyeOff, IconSearch, IconVolume } from './Icons';
 
 type IrrRow = [string, string, string, string];
@@ -295,7 +295,7 @@ function RowGroup({
           className={`vi cv ${revealed[`${idx}-3`] ? 'rev' : ''}`}
           onClick={() => onCellClick(3)}
         >
-          {row[3]}
+          {capFirst(row[3])}
         </td>
       </tr>
     </>

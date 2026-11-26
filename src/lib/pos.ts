@@ -60,9 +60,16 @@ export function keyOf(w: string | undefined | null): string {
 }
 
 export function capFirst(s: string | undefined | null): string {
-  const str = String(s || '');
+  const str = String(s || '').trim();
   if (!str) return str;
-  return str.charAt(0).toLocaleUpperCase('vi') + str.slice(1);
+  // Capitalize first letter (even after leading punctuation like '(') and after ';' separators
+  return str
+    .replace(/^([^a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]*)([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF])/, (_, pre: string, ch: string) => {
+      return pre + ch.toLocaleUpperCase('vi');
+    })
+    .replace(/(;\s*[^a-zA-Z\u00C0-\u024F\u1E00-\u1EFF]*)([a-zA-Z\u00C0-\u024F\u1E00-\u1EFF])/g, (_, pre: string, ch: string) => {
+      return pre + ch.toLocaleUpperCase('vi');
+    });
 }
 
 function parsePosTags(s?: string): PosKey[] {
