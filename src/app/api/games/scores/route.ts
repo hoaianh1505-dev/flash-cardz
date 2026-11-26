@@ -5,7 +5,12 @@ import { getSessionUser } from '@/lib/auth';
 import { GameId, GameScore } from '@/models/GameScore';
 import { checkRateLimit, getClientIp, rateLimitResponse, sanitizeText } from '@/lib/security';
 
-const VALID_GAMES = new Set<GameId>(['plane-shooter', 'match-pairs', 'word-scramble']);
+const VALID_GAMES = new Set<GameId>([
+  'plane-shooter',
+  'match-pairs',
+  'word-scramble',
+  'speed-blitz',
+]);
 
 function parseGame(raw: unknown): GameId {
   return VALID_GAMES.has(raw as GameId) ? (raw as GameId) : 'plane-shooter';

@@ -7,6 +7,7 @@ import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
 import MatchPairsGame from './MatchPairsGame';
 import PlaneShooterGame from './PlaneShooterGame';
+import SpeedBlitzGame from './SpeedBlitzGame';
 import Toast, { ToastType } from './Toast';
 import WordScrambleGame from './WordScrambleGame';
 import {
@@ -43,6 +44,7 @@ import {
   IconVolume,
   IconVolumeOff,
   IconX,
+  IconZap,
 } from './Icons';
 
 export interface MeaningItem {
@@ -101,7 +103,7 @@ interface QuizState {
 
 type MainTab = 'study' | 'practice' | 'games' | 'library' | 'irregular' | 'stats';
 type PracticeSubTab = 'dictation' | 'quiz';
-type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble';
+type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble' | 'speed-blitz';
 
 const GUEST_CARDS_KEY = 'flashcardx_guest_cards_v1';
 const GUEST_DAILY_KEY = 'flashcardx_guest_daily_v1';
@@ -345,7 +347,8 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         if (
           p.activeGame === 'plane-shooter' ||
           p.activeGame === 'match-pairs' ||
-          p.activeGame === 'word-scramble'
+          p.activeGame === 'word-scramble' ||
+          p.activeGame === 'speed-blitz'
         ) {
           setActiveGame(p.activeGame);
         }
@@ -2570,6 +2573,22 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                         <span>Ghép chữ cái siêu tốc</span>
                       </div>
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeGame === 'speed-blitz'}
+                      className={`practiceModeBtn ${activeGame === 'speed-blitz' ? 'active' : ''}`}
+                      onClick={() => {
+                        stopSpeech();
+                        setActiveGame('speed-blitz');
+                      }}
+                    >
+                      <IconZap size={18} />
+                      <div>
+                        <b>Đúng / Sai Tia Chớp</b>
+                        <span>Phản xạ cực nhanh ← →</span>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
@@ -2591,6 +2610,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                 )}
                 {activeGame === 'word-scramble' && (
                   <WordScrambleGame
+                    cards={cards}
+                    isGuest={isGuest}
+                    onSpeak={speak}
+                    onToast={showToast}
+                  />
+                )}
+                {activeGame === 'speed-blitz' && (
+                  <SpeedBlitzGame
                     cards={cards}
                     isGuest={isGuest}
                     onSpeak={speak}

@@ -6731,3 +6731,133 @@ body {
 .playerJetDock {
   transition: left 0.16s ease-out, transform 0.16s ease-out;
 }
+
+
+/* ===== Speed Blitz True/False Game ===== */
+.blitzCard {
+  width: 100%;
+  max-width: 720px;
+  background: var(--card-bg);
+  border: 2px solid var(--line);
+  border-radius: 24px;
+  padding: 36px 38px 34px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.blitzCard.ok {
+  border-color: var(--teal);
+  background: var(--teal-bg);
+}
+
+.blitzCard.err {
+  border-color: var(--rust);
+  background: var(--rust-bg);
+  animation: tileShake 0.35s ease;
+}
+
+.blitzTimeTrack {
+  width: 100%;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.blitzTimeFill {
+  height: 100%;
+  background: var(--teal);
+  transition: width 0.04s linear;
+}
+
+.blitzTimeFill.low {
+  background: var(--rust);
+}
+
+.blitzWordRow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.blitzEn {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.6px;
+}
+
+.blitzEquals {
+  margin: 14px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.blitzVi {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 700;
+  color: var(--teal-deep);
+  margin-bottom: 24px;
+}
+
+.blitzCorrection {
+  margin: -10px 0 20px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--rust);
+  color: var(--rust);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.blitzActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.blitzBtn {
+  padding: 18px 20px;
+  border-radius: 16px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  gap: 10px;
+}
+
+.blitzBtn.no {
+  background: var(--rust-bg);
+  color: var(--rust);
+  border: 2px solid var(--rust);
+}
+
+.blitzBtn.no:hover {
+  background: var(--rust);
+  color: #fff;
+}
+
+.blitzBtn.yes {
+  background: var(--teal);
+  color: #fff;
+  border: 2px solid var(--teal);
+}
+
+.blitzBtn.yes:hover {
+  background: var(--teal-deep);
+}
+
+.blitzBtn kbd {
+  font-size: 13px;
+  opacity: 0.8;
+  color: var(--ink);
+}

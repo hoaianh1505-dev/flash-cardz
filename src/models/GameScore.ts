@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
-export type GameId = 'plane-shooter' | 'match-pairs' | 'word-scramble';
+export type GameId = 'plane-shooter' | 'match-pairs' | 'word-scramble' | 'speed-blitz';
 
 export interface IGameScore extends Document {
   userId: Types.ObjectId;
@@ -21,7 +21,7 @@ const GameScoreSchema = new Schema<IGameScore>(
     displayName: { type: String, required: true, trim: true, maxlength: 48 },
     game: {
       type: String,
-      enum: ['plane-shooter', 'match-pairs', 'word-scramble'],
+      enum: ['plane-shooter', 'match-pairs', 'word-scramble', 'speed-blitz'],
       default: 'plane-shooter',
       index: true,
     },
