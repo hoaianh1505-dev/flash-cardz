@@ -372,3 +372,13 @@ export function IconZap({ size, ...p }: IconProps) {
     </svg>
   );
 }
+
+export function IconMusic({ size, ...p }: IconProps) {
+  return (
+    <svg {...base(size)} {...p}>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}

@@ -6877,3 +6877,10 @@ body {
   box-shadow: 0 0 6px #79d8b7;
   animation-duration: 0.24s;
 }
+
+
+.planeSpeakMini.musicOn {
+  background: rgba(121, 216, 183, 0.22);
+  border-color: #79d8b7;
+  color: #79d8b7;
+}

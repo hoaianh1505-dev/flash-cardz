@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst } from '@/lib/pos';
+import { gameMusic } from '@/lib/gameMusic';
 import type { CardItem } from './FlashcardApp';
-import { IconLightbulb, IconRotateCcw, IconShuffle, IconType, IconVolume, IconX } from './Icons';
+import { IconLightbulb, IconMusic, IconRotateCcw, IconShuffle, IconType, IconVolume, IconX } from './Icons';
 
 interface ScoreEntry {
   id: string;
@@ -53,6 +54,7 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'over'>('idle');
   const [confirmExit, setConfirmExit] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
 
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS);
   const [score, setScore] = useState(0);
@@ -209,6 +211,17 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
     setPhase('playing');
     loadNextWord();
   };
+
+  const urgentBgm = timeLeft <= 15;
+
+  useEffect(() => {
+    if (phase === 'playing' && !confirmExit && musicOn) {
+      gameMusic.start(urgentBgm ? 'boss' : 'arcade');
+    } else {
+      gameMusic.stop();
+    }
+    return () => gameMusic.stop();
+  }, [phase, confirmExit, musicOn, urgentBgm]);
 
   useEffect(() => {
     if (phase !== 'playing' || confirmExit) return;
@@ -427,10 +440,21 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
               </div>
             </div>
 
-            <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
-              <IconX size={16} />
-              <span>Thoát trò chơi</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className={`iconBtn ${musicOn ? 'success' : 'ghost'}`}
+                onClick={() => setMusicOn((m) => !m)}
+                title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+                aria-label="Nhạc nền"
+              >
+                <IconMusic size={17} />
+              </button>
+              <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
+                <IconX size={16} />
+                <span>Thoát trò chơi</span>
+              </button>
+            </div>
           </header>
 
           <div className="gameFsBody">

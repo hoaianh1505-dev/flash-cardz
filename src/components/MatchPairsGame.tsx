@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst } from '@/lib/pos';
+import { gameMusic } from '@/lib/gameMusic';
 import type { CardItem } from './FlashcardApp';
-import { IconGrid, IconRotateCcw, IconX } from './Icons';
+import { IconGrid, IconMusic, IconRotateCcw, IconX } from './Icons';
 
 interface TileItem {
   uid: string;
@@ -47,6 +48,7 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
   const [confirmExit, setConfirmExit] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
 
   const [tiles, setTiles] = useState<TileItem[]>([]);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
@@ -104,6 +106,15 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
   useEffect(() => {
     loadScores();
   }, [loadScores]);
+
+  useEffect(() => {
+    if (phase === 'playing' && !confirmExit && musicOn) {
+      gameMusic.start('arcade');
+    } else {
+      gameMusic.stop();
+    }
+    return () => gameMusic.stop();
+  }, [phase, confirmExit, musicOn]);
 
   useEffect(() => {
     if (phase !== 'playing' || confirmExit) return;
@@ -395,10 +406,21 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
               </div>
             </div>
 
-            <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
-              <IconX size={16} />
-              <span>Thoát trò chơi</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className={`iconBtn ${musicOn ? 'success' : 'ghost'}`}
+                onClick={() => setMusicOn((m) => !m)}
+                title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+                aria-label="Nhạc nền"
+              >
+                <IconMusic size={17} />
+              </button>
+              <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
+                <IconX size={16} />
+                <span>Thoát trò chơi</span>
+              </button>
+            </div>
           </header>
 
           <div className="gameFsBody">

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst, keyOf } from '@/lib/pos';
+import { gameMusic } from '@/lib/gameMusic';
 import type { CardItem } from './FlashcardApp';
-import { IconPlane, IconRotateCcw, IconVolume, IconVolumeOff, IconX } from './Icons';
+import { IconMusic, IconPlane, IconRotateCcw, IconVolume, IconVolumeOff, IconX } from './Icons';
 
 interface PlaneEnemy {
   uid: string;
@@ -290,6 +291,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const [phase, setPhase] = useState<'idle' | 'playing' | 'over'>('idle');
   const [confirmExit, setConfirmExit] = useState(false);
   const [sfxOn, setSfxOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(true);
 
   const diffCfg = DIFFICULTIES[difficulty];
   const maxLives = diffCfg.lives;
@@ -705,6 +707,19 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [pool.length, onToast, diffCfg.lives, diffCfg.bossEvery, subMode, spawnTapSquadron, spawnTypingPlane]);
+
+  // Dynamic Arcade / Boss BGM lifecycle
+  useEffect(() => {
+    if (phase === 'playing' && !confirmExit && musicOn) {
+      const style = boss || difficulty === 'hell' ? 'boss' : 'arcade';
+      gameMusic.start(style);
+    } else {
+      gameMusic.stop();
+    }
+    return () => {
+      gameMusic.stop();
+    };
+  }, [phase, confirmExit, musicOn, boss, difficulty]);
 
   // 60fps loop (handles normal planes + Boss patrol & slow descent)
   useEffect(() => {
@@ -1246,6 +1261,15 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                className={`planeSpeakMini ${musicOn ? 'musicOn' : ''}`}
+                onClick={() => setMusicOn((m) => !m)}
+                title={musicOn ? 'Tắt nhạc nền' : 'Bật nhạc nền'}
+                aria-label="Nhạc nền game"
+              >
+                <IconMusic size={16} />
+              </button>
               <button
                 type="button"
                 className="planeSpeakMini"
