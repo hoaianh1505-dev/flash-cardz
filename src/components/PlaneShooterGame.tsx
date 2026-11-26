@@ -264,55 +264,146 @@ function SpaceCanvasBg({ isHell }: { isHell: boolean }) {
       ctx.fillStyle = neb2;
       ctx.fillRect(0, 0, w, h);
 
-      // Distant ringed planet slowly drifting
-      planetY += 2.2 * dt;
-      if (planetY > h + 140) planetY = -140;
+      // ===== 1. Giant Ringed Saturn-like Gas Giant (top-right, drifting slowly) =====
+      planetY += 2.6 * dt;
+      if (planetY > h + 200) planetY = -200;
       const px = w * 0.82;
       const py = planetY;
       ctx.save();
       ctx.translate(px, py);
-      // Back ring
-      ctx.strokeStyle = isHell ? 'rgba(240, 146, 112, 0.28)' : 'rgba(155, 206, 224, 0.26)';
-      ctx.lineWidth = 7;
+      // Outer atmospheric glow
+      const satGlow = ctx.createRadialGradient(0, 0, 52, 0, 0, 96);
+      satGlow.addColorStop(0, isHell ? 'rgba(235, 110, 82, 0.25)' : 'rgba(130, 198, 224, 0.22)');
+      satGlow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = satGlow;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 74, 18, -0.26, Math.PI, Math.PI * 2);
+      ctx.arc(0, 0, 96, 0, Math.PI * 2);
+      ctx.fill();
+      // Back rings
+      ctx.strokeStyle = isHell ? 'rgba(244, 152, 112, 0.42)' : 'rgba(220, 206, 170, 0.38)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 134, 30, -0.24, Math.PI, Math.PI * 2);
       ctx.stroke();
-      // Planet sphere
-      const pGrad = ctx.createRadialGradient(-14, -14, 6, 0, 0, 38);
+      ctx.strokeStyle = isHell ? 'rgba(255, 204, 160, 0.28)' : 'rgba(155, 214, 232, 0.28)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 116, 25, -0.24, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      // Planet sphere clipped with cloud bands
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, 68, 0, Math.PI * 2);
+      ctx.clip();
+      const pGrad = ctx.createRadialGradient(-24, -22, 8, 0, 0, 72);
       if (isHell) {
-        pGrad.addColorStop(0, '#c86852');
-        pGrad.addColorStop(0.55, '#632724');
-        pGrad.addColorStop(1, '#1d0b0d');
+        pGrad.addColorStop(0, '#e38768');
+        pGrad.addColorStop(0.55, '#82312a');
+        pGrad.addColorStop(1, '#1e090c');
       } else {
-        pGrad.addColorStop(0, '#5a8ea8');
-        pGrad.addColorStop(0.55, '#223d52');
-        pGrad.addColorStop(1, '#09131d');
+        pGrad.addColorStop(0, '#d8c59e');
+        pGrad.addColorStop(0.5, '#7c6b53');
+        pGrad.addColorStop(1, '#141926');
       }
       ctx.fillStyle = pGrad;
+      ctx.fillRect(-70, -70, 140, 140);
+      // Horizontal atmospheric gas bands
+      ctx.fillStyle = 'rgba(255, 245, 220, 0.12)';
+      ctx.fillRect(-70, -28, 140, 11);
+      ctx.fillRect(-70, 4, 140, 14);
+      ctx.fillStyle = 'rgba(15, 20, 32, 0.18)';
+      ctx.fillRect(-70, -10, 140, 8);
+      ctx.fillRect(-70, 24, 140, 10);
+      ctx.restore();
+      // Front rings
+      ctx.strokeStyle = isHell ? 'rgba(252, 188, 146, 0.56)' : 'rgba(232, 218, 184, 0.54)';
+      ctx.lineWidth = 9;
       ctx.beginPath();
-      ctx.arc(0, 0, 38, 0, Math.PI * 2);
-      ctx.fill();
-      // Front ring
-      ctx.strokeStyle = isHell ? 'rgba(246, 184, 140, 0.38)' : 'rgba(182, 225, 238, 0.36)';
-      ctx.lineWidth = 5;
+      ctx.ellipse(0, 0, 134, 30, -0.24, 0, Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = isHell ? 'rgba(255, 224, 190, 0.35)' : 'rgba(166, 222, 240, 0.36)';
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 74, 18, -0.26, 0, Math.PI);
+      ctx.ellipse(0, 0, 116, 25, -0.24, 0, Math.PI);
       ctx.stroke();
       ctx.restore();
 
-      // Distant small moon on left
+      // ===== 2. Ocean / Emerald Earth-like Planet (left-middle) =====
+      const ex = w * 0.15;
+      const ey = ((planetY * 0.65 + h * 0.52) % (h + 220)) - 110;
       ctx.save();
-      const mx = w * 0.14;
-      const my = ((planetY * 0.6 + h * 0.55) % (h + 120)) - 60;
-      const mGrad = ctx.createRadialGradient(mx - 6, my - 6, 2, mx, my, 18);
-      mGrad.addColorStop(0, '#cfd8e3');
-      mGrad.addColorStop(0.6, '#566475');
-      mGrad.addColorStop(1, '#0e1520');
-      ctx.fillStyle = mGrad;
+      ctx.translate(ex, ey);
+      const eHalo = ctx.createRadialGradient(0, 0, 42, 0, 0, 74);
+      eHalo.addColorStop(0, isHell ? 'rgba(220, 88, 60, 0.25)' : 'rgba(92, 198, 212, 0.28)');
+      eHalo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = eHalo;
       ctx.beginPath();
-      ctx.arc(mx, my, 18, 0, Math.PI * 2);
+      ctx.arc(0, 0, 74, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, 50, 0, Math.PI * 2);
+      ctx.clip();
+      const eGrad = ctx.createRadialGradient(-18, -18, 6, 0, 0, 54);
+      if (isHell) {
+        eGrad.addColorStop(0, '#c25742');
+        eGrad.addColorStop(0.55, '#591e1e');
+        eGrad.addColorStop(1, '#14080a');
+      } else {
+        eGrad.addColorStop(0, '#62b6d9');
+        eGrad.addColorStop(0.55, '#1e5875');
+        eGrad.addColorStop(1, '#091826');
+      }
+      ctx.fillStyle = eGrad;
+      ctx.fillRect(-52, -52, 104, 104);
+      // Continents / surface patches
+      ctx.fillStyle = isHell ? 'rgba(244, 160, 96, 0.25)' : 'rgba(94, 196, 146, 0.34)';
+      ctx.beginPath();
+      ctx.ellipse(-12, -10, 22, 12, 0.4, 0, Math.PI * 2);
+      ctx.ellipse(16, 14, 18, 10, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      // Cloud wisps
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath();
+      ctx.ellipse(6, -18, 20, 4, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(-10, 18, 24, 5, -0.15, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
+      ctx.restore();
+
+      // ===== 3. Mars-like Red Crater Planet (center-left upper) =====
+      const rx = w * 0.44;
+      const ry = ((planetY * 0.4 + h * 0.16) % (h + 180)) - 90;
+      ctx.save();
+      ctx.translate(rx, ry);
+      const rGrad = ctx.createRadialGradient(-10, -10, 4, 0, 0, 32);
+      rGrad.addColorStop(0, '#df815e');
+      rGrad.addColorStop(0.6, '#873a2c');
+      rGrad.addColorStop(1, '#1a0c0e');
+      ctx.fillStyle = rGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, Math.PI * 2);
+      ctx.fill();
+      // Craters
+      ctx.fillStyle = 'rgba(20, 8, 10, 0.26)';
+      ctx.beginPath();
+      ctx.arc(-8, -4, 6, 0, Math.PI * 2);
+      ctx.arc(9, 7, 4.5, 0, Math.PI * 2);
+      ctx.arc(-2, 12, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // ===== 4. Distant Ice Moon (lower-right) =====
+      const mx = w * 0.66;
+      const my = ((planetY * 0.85 + h * 0.78) % (h + 140)) - 70;
+      const mGrad = ctx.createRadialGradient(mx - 6, my - 6, 2, mx, my, 20);
+      mGrad.addColorStop(0, '#dde7f2');
+      mGrad.addColorStop(0.6, '#65788e');
+      mGrad.addColorStop(1, '#101824');
+      ctx.fillStyle = mGrad;
+      ctx.beginPath();
+      ctx.arc(mx, my, 19, 0, Math.PI * 2);
+      ctx.fill();
 
       // Parallax twinkling stars
       for (const s of stars) {
