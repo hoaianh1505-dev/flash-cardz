@@ -188,7 +188,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const [shuffledIds, setShuffledIds] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [quickSearch, setQuickSearch] = useState('');
   const [reverseMode, setReverseMode] = useState(false);
   const [recentIds, setRecentIds] = useState<string[]>([]);
 
@@ -1019,22 +1018,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     }, 60);
   }, []);
 
-  const handleQuickSearch = (val: string) => {
-    setQuickSearch(val);
-    const q = keyOf(val);
-    if (!q) return;
-    const found = cards.find(
-      (c) => keyOf(c.word).includes(q) || c.meanings.some((m) => keyOf(m.text).includes(q))
-    );
-    if (found) {
-      setMode('all');
-      setTypeFilter('all');
-      setFlipped(false);
-      setShuffledIds((prev) => [found.id, ...prev.filter((x) => x !== found.id)]);
-      setCurrentIndex(0);
-    }
-  };
-
   const openAdd = () => {
     setEditingId(null);
     setWordInput('');
@@ -1812,17 +1795,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
               <IconMenu size={19} />
             </button>
             <h1 className="appHeaderTitle">{pageTitleMap[activeTab]}</h1>
-
-            {activeTab === 'study' && (
-              <div className="headerSearchWrap">
-                <IconSearch size={15} className="searchFieldIcon" />
-                <input
-                  value={quickSearch}
-                  onChange={(e) => handleQuickSearch(e.target.value)}
-                  placeholder="Tìm nhanh & nhảy tới thẻ..."
-                />
-              </div>
-            )}
           </div>
 
           <div className="appHeaderRight">
