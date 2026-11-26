@@ -7,6 +7,7 @@ import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
 import MatchPairsGame from './MatchPairsGame';
 import PlaneShooterGame from './PlaneShooterGame';
+import PronunciationPractice from './PronunciationPractice';
 import SpeedBlitzGame from './SpeedBlitzGame';
 import Toast, { ToastType } from './Toast';
 import WordScrambleGame from './WordScrambleGame';
@@ -26,6 +27,7 @@ import {
   IconLogIn,
   IconLogout,
   IconMenu,
+  IconMic,
   IconMoon,
   IconNote,
   IconPlane,
@@ -73,7 +75,7 @@ export interface DailyStats {
 
 export interface StudySessionItem {
   id: string;
-  mode: 'dictation' | 'quiz';
+  mode: 'dictation' | 'quiz' | 'speaking';
   score: number;
   total: number;
   accuracy: number;
@@ -101,7 +103,7 @@ interface QuizState {
   reported: boolean;
 }
 
-type MainTab = 'study' | 'practice' | 'games' | 'library' | 'irregular' | 'stats';
+type MainTab = 'study' | 'practice' | 'speaking' | 'games' | 'library' | 'irregular' | 'stats';
 type PracticeSubTab = 'dictation' | 'quiz';
 type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble' | 'speed-blitz';
 
@@ -338,7 +340,9 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         if (typeof p.reverseMode === 'boolean') setReverseMode(p.reverseMode);
         if (
           p.activeTab &&
-          ['study', 'practice', 'games', 'library', 'irregular', 'stats'].includes(p.activeTab)
+          ['study', 'practice', 'speaking', 'games', 'library', 'irregular', 'stats'].includes(
+            p.activeTab
+          )
         ) {
           setActiveTab(p.activeTab);
         }
@@ -844,7 +848,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
 
   const recordPracticeSession = useCallback(
     async (summary: {
-      mode: 'dictation' | 'quiz';
+      mode: 'dictation' | 'quiz' | 'speaking';
       score: number;
       total: number;
       durationSec: number;
@@ -1628,6 +1632,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const pageTitleMap: Record<MainTab, string> = {
     study: 'Học thẻ Flashcard',
     practice: 'Phòng luyện tập',
+    speaking: 'Luyện phát âm (Micro)',
     games: 'Trò chơi từ vựng',
     library: 'Danh sách từ vựng',
     irregular: 'Động từ bất quy tắc',
@@ -1698,6 +1703,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           >
             <IconHeadphones size={18} />
             <span>Luyện tập</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebarItem ${activeTab === 'speaking' ? 'active' : ''}`}
+            onClick={() => switchTab('speaking')}
+          >
+            <IconMic size={18} />
+            <span>Phát âm</span>
           </button>
           <button
             type="button"
@@ -2484,6 +2497,31 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
             </div>
           )}
 
+          {/* ==================== TAB: PHÁT ÂM (MICRO SHADOWING) ==================== */}
+          {activeTab === 'speaking' && (
+            <div className="innerPageWrap">
+              <div className="practiceHeader">
+                <div>
+                  <h2 className="pageTitle">Luyện phát âm (Shadowing)</h2>
+                  <p className="pageSub">
+                    Nghe phát âm mẫu rồi đọc to từ tiếng Anh vào Micro — hệ thống tự nhận diện và
+                    chấm điểm độ chuẩn ngay trên trình duyệt.
+                  </p>
+                </div>
+              </div>
+
+              <PronunciationPractice
+                cards={cards}
+                isSpeaking={isSpeaking}
+                onSpeak={speak}
+                onMarkLearned={setCardLearnedById}
+                onMarkManyUnlearned={markManyUnlearned}
+                onToast={showToast}
+                onSessionComplete={recordPracticeSession}
+              />
+            </div>
+          )}
+
           {/* ==================== TAB: TRÒ CHƠI (GAME HUB) ==================== */}
           {activeTab === 'games' && (
             <div className="innerPageWrap">
@@ -3012,7 +3050,11 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                           <div>
                             <div className="sessionModeRow">
                               <span className={`sessionTag ${s.mode}`}>
-                                {s.mode === 'dictation' ? 'Nghe chép chính tả' : 'Trắc nghiệm'}
+                                {s.mode === 'dictation'
+                                  ? 'Nghe chép chính tả'
+                                  : s.mode === 'speaking'
+                                    ? 'Luyện phát âm'
+                                    : 'Trắc nghiệm'}
                               </span>
                               <span className="sessionDate">
                                 {new Date(s.createdAt).toLocaleString('vi-VN', {

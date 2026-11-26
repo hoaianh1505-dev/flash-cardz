@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const mode = body?.mode === 'quiz' ? 'quiz' : 'dictation';
+    const mode =
+      body?.mode === 'quiz' ? 'quiz' : body?.mode === 'speaking' ? 'speaking' : 'dictation';
     const total = Math.max(1, Number(body?.total) || 1);
     const score = Math.max(0, Math.min(total, Number(body?.score) || 0));
     const accuracy = Math.round((score / total) * 100);

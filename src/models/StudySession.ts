@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
 export interface IStudySession extends Document {
   userId: Types.ObjectId;
-  mode: 'dictation' | 'quiz';
+  mode: 'dictation' | 'quiz' | 'speaking';
   score: number;
   total: number;
   accuracy: number;
@@ -14,7 +14,7 @@ export interface IStudySession extends Document {
 const StudySessionSchema = new Schema<IStudySession>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    mode: { type: String, enum: ['dictation', 'quiz'], required: true },
+    mode: { type: String, enum: ['dictation', 'quiz', 'speaking'], required: true },
     score: { type: Number, required: true, min: 0 },
     total: { type: Number, required: true, min: 1 },
     accuracy: { type: Number, required: true, min: 0, max: 100 },
