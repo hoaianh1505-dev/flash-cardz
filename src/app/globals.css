@@ -6861,3 +6861,19 @@ body {
   opacity: 0.8;
   color: var(--ink);
 }
+
+
+/* Per-letter rapid-fire mini hit spark */
+.planeBoom.miniHit .boomCore {
+  width: 12px;
+  height: 12px;
+  animation-duration: 0.2s;
+}
+
+.planeBoom.miniHit .boomSpark {
+  width: 4px;
+  height: 4px;
+  background: #79d8b7;
+  box-shadow: 0 0 6px #79d8b7;
+  animation-duration: 0.24s;
+}

@@ -45,6 +45,7 @@ interface ExplosionFx {
   y: number;
   text: string;
   big?: boolean;
+  mini?: boolean;
 }
 
 interface ScoreEntry {
@@ -619,6 +620,29 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     [pool, diffCfg.speedMul, diffCfg.maxPlanes]
   );
 
+  // Per-letter rapid-fire plasma bolt (fires on EVERY matching keystroke like ZType!)
+  const fireLetterShot = useCallback(
+    (targetX: number, targetY: number, tier: number) => {
+      const id = Date.now() + Math.random();
+      const prevX = shipXRef.current;
+      const bankAngle = Math.max(-16, Math.min(16, (targetX - prevX) * 0.55));
+      shipXRef.current = targetX;
+      setShipBank(bankAngle);
+      setShipX(targetX);
+      setLasers((prev) => [...prev, { id, fromX: prevX, toX: targetX, toY: targetY, tier }]);
+      setExplosions((prev) => [...prev, { id, x: targetX, y: targetY, text: '', mini: true }]);
+      playSfx('laser');
+      setTimeout(() => setShipBank(0), 140);
+      setTimeout(() => {
+        setLasers((prev) => prev.filter((l) => l.id !== id));
+      }, 150);
+      setTimeout(() => {
+        setExplosions((prev) => prev.filter((e) => e.id !== id));
+      }, 260);
+    },
+    [playSfx]
+  );
+
   const fireFx = useCallback(
     (targetX: number, targetY: number, pointsText: string, tier: number, big = false) => {
       const id = Date.now() + Math.random();
@@ -986,23 +1010,46 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   };
 
   const handleTypingChange = (val: string) => {
+    const isAddingChar = val.length > typed.length;
     setTyped(val);
     if (phase !== 'playing' || confirmExit) return;
     const cleaned = keyOf(val);
     if (!cleaned) return;
 
+    const tierNow = getShipTier(wordsClearedRef.current).level;
+
     if (bossRef.current) {
-      if (keyOf(bossRef.current.targetWord) === cleaned) {
+      const bWord = keyOf(bossRef.current.targetWord);
+      if (bWord === cleaned) {
         setTyped('');
         damageBoss();
+      } else if (isAddingChar && bWord.startsWith(cleaned)) {
+        fireLetterShot(bossRef.current.x, bossRef.current.y, tierNow);
+        setBoss((b) => (b ? { ...b, hitFlash: true } : null));
+        setTimeout(() => setBoss((b) => (b ? { ...b, hitFlash: false } : null)), 90);
       }
       return;
     }
 
-    const match = enemies.find((en) => keyOf(en.targetWord) === cleaned);
-    if (match) {
+    const fullMatch = enemies.find((en) => keyOf(en.targetWord) === cleaned);
+    if (fullMatch) {
       setTyped('');
-      registerHit(match);
+      registerHit(fullMatch);
+      return;
+    }
+
+    // Per-letter rapid-fire into the closest (lowest) matching enemy plane + slight knockback
+    if (isAddingChar) {
+      const matching = enemies
+        .filter((en) => keyOf(en.targetWord).startsWith(cleaned))
+        .sort((a, b) => b.y - a.y);
+      const target = matching[0];
+      if (target) {
+        fireLetterShot(target.x, target.y, tierNow);
+        setEnemies((prev) =>
+          prev.map((p) => (p.uid === target.uid ? { ...p, y: Math.max(-4, p.y - 1.6) } : p))
+        );
+      }
     }
   };
 
@@ -1424,23 +1471,25 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
               })}
             </svg>
 
-            {/* Multi-Particle Radial Explosions + Floating Score */}
+            {/* Multi-Particle Radial Explosions + Per-Letter Hit Sparks + Floating Score */}
             {explosions.map((ex) => (
               <div
                 key={ex.id}
-                className={`planeBoom ${ex.big ? 'bigBoom' : ''}`}
+                className={`planeBoom ${ex.big ? 'bigBoom' : ''} ${ex.mini ? 'miniHit' : ''}`}
                 style={{ left: `${ex.x}%`, top: `${ex.y}%` }}
               >
                 <span className="boomCore" />
-                <span className="boomRing" />
-                {[0, 36, 72, 108, 144, 180, 216, 252, 288, 324].map((deg) => (
-                  <span
-                    key={deg}
-                    className="boomSpark"
-                    style={{ '--deg': `${deg}deg` } as React.CSSProperties}
-                  />
-                ))}
-                <span className="boomText">{ex.text}</span>
+                {!ex.mini && <span className="boomRing" />}
+                {(ex.mini ? [0, 90, 180, 270] : [0, 36, 72, 108, 144, 180, 216, 252, 288, 324]).map(
+                  (deg) => (
+                    <span
+                      key={deg}
+                      className="boomSpark"
+                      style={{ '--deg': `${deg}deg` } as React.CSSProperties}
+                    />
+                  )
+                )}
+                {ex.text && <span className="boomText">{ex.text}</span>}
               </div>
             ))}
 
