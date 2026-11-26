@@ -7053,3 +7053,176 @@ body {
   background: #1d3240;
   color: #84c5ea;
 }
+
+
+/* ===== Word Form Suffix Guide (Clean Editorial Reading View) ===== */
+.wfWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.wfUsageBox {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.wfUsageSub {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.wfSectionTitle {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--teal-deep);
+}
+
+:root[data-theme="dark"] .wfSectionTitle {
+  color: var(--teal);
+}
+
+.wfTableWrap {
+  overflow-x: auto;
+  border: 1.5px solid var(--line-soft);
+  border-radius: 14px;
+}
+
+.wfTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15.5px;
+}
+
+.wfTable th {
+  background: var(--gold-bg);
+  color: var(--ink);
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.wfTable td {
+  padding: 12px 16px;
+  border-top: 1px solid var(--line-soft);
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.wfTable tbody tr:nth-child(even) {
+  background: rgba(128, 128, 128, 0.045);
+}
+
+.wfSuffix {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--teal-deep);
+  white-space: nowrap;
+}
+
+:root[data-theme="dark"] .wfSuffix {
+  color: var(--teal);
+}
+
+.wfEx {
+  color: var(--ink);
+}
+
+.wfBulletList {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+.wfSpeakCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.wfSpeakCell:hover {
+  background: var(--teal-bg);
+  border-color: var(--teal);
+  color: var(--teal-deep);
+}
+
+.wfExerciseGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 18px;
+}
+
+.wfExerciseRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 11px;
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  font-size: 15px;
+}
+
+.wfExNum {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--teal);
+  min-width: 24px;
+}
+
+.wfExBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.wfAnsPill {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+}
+
+.wfRoadmapText {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+
+@media (max-width: 860px) {
+  .wfExerciseGrid {
+    grid-template-columns: 1fr;
+  }
+  .wfTable {
+    font-size: 14px;
+  }
+  .wfTable th,
+  .wfTable td {
+    padding: 9px 10px;
+  }
+}

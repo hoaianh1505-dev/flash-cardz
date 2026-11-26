@@ -10,6 +10,7 @@ import PlaneShooterGame from './PlaneShooterGame';
 import PronunciationPractice from './PronunciationPractice';
 import SpeedBlitzGame from './SpeedBlitzGame';
 import Toast, { ToastType } from './Toast';
+import WordFormGuide from './WordFormGuide';
 import WordScrambleGame from './WordScrambleGame';
 import {
   IconBarChart,
@@ -103,7 +104,15 @@ interface QuizState {
   reported: boolean;
 }
 
-type MainTab = 'study' | 'practice' | 'speaking' | 'games' | 'library' | 'irregular' | 'stats';
+type MainTab =
+  | 'study'
+  | 'practice'
+  | 'speaking'
+  | 'games'
+  | 'library'
+  | 'irregular'
+  | 'wordform'
+  | 'stats';
 type PracticeSubTab = 'dictation' | 'quiz';
 type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble' | 'speed-blitz';
 
@@ -340,9 +349,16 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         if (typeof p.reverseMode === 'boolean') setReverseMode(p.reverseMode);
         if (
           p.activeTab &&
-          ['study', 'practice', 'speaking', 'games', 'library', 'irregular', 'stats'].includes(
-            p.activeTab
-          )
+          [
+            'study',
+            'practice',
+            'speaking',
+            'games',
+            'library',
+            'irregular',
+            'wordform',
+            'stats',
+          ].includes(p.activeTab)
         ) {
           setActiveTab(p.activeTab);
         }
@@ -1636,6 +1652,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
     games: 'Trò chơi từ vựng',
     library: 'Danh sách từ vựng',
     irregular: 'Động từ bất quy tắc',
+    wordform: 'Cẩm nang Hậu tố (Word Form)',
     stats: 'Thống kê & Tiến độ',
   };
 
@@ -1736,6 +1753,14 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           >
             <IconLayers size={18} />
             <span>Bất quy tắc</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebarItem ${activeTab === 'wordform' ? 'active' : ''}`}
+            onClick={() => switchTab('wordform')}
+          >
+            <IconNote size={18} />
+            <span>Hậu tố (Word Form)</span>
           </button>
           <button
             type="button"
@@ -2939,6 +2964,13 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           {activeTab === 'irregular' && (
             <div className="innerPageWrap">
               <IrregularView onSpeak={speak} />
+            </div>
+          )}
+
+          {/* ==================== TAB: CẨM NANG HẬU TỐ (WORD FORM) ==================== */}
+          {activeTab === 'wordform' && (
+            <div className="innerPageWrap">
+              <WordFormGuide onSpeak={speak} />
             </div>
           )}
 
