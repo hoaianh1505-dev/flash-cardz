@@ -33,6 +33,7 @@ interface BossEntity {
 
 interface LaserShot {
   id: number;
+  fromX: number;
   toX: number;
   toY: number;
   tier: number;
@@ -300,6 +301,8 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const [wordsCleared, setWordsCleared] = useState(0);
   const [wave, setWave] = useState(1);
   const [shipX, setShipX] = useState(50);
+  const [shipBank, setShipBank] = useState(0);
+  const shipXRef = useRef(50);
   const [enemies, setEnemies] = useState<PlaneEnemy[]>([]);
   const [boss, setBoss] = useState<BossEntity | null>(null);
   const [bossTapChoices, setBossTapChoices] = useState<{ text: string; correct: boolean }[]>([]);
@@ -619,17 +622,22 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const fireFx = useCallback(
     (targetX: number, targetY: number, pointsText: string, tier: number, big = false) => {
       const id = Date.now() + Math.random();
+      const prevX = shipXRef.current;
+      const bankAngle = Math.max(-18, Math.min(18, (targetX - prevX) * 0.65));
+      shipXRef.current = targetX;
+      setShipBank(bankAngle);
       setShipX(targetX);
-      setLasers((prev) => [...prev, { id, toX: targetX, toY: targetY, tier }]);
+      setLasers((prev) => [...prev, { id, fromX: prevX, toX: targetX, toY: targetY, tier }]);
       setExplosions((prev) => [...prev, { id, x: targetX, y: targetY, text: pointsText, big }]);
       playSfx('laser');
       setTimeout(() => playSfx('boom'), 60);
+      setTimeout(() => setShipBank(0), 220);
       setTimeout(() => {
         setLasers((prev) => prev.filter((l) => l.id !== id));
-      }, 240);
+      }, 250);
       setTimeout(() => {
         setExplosions((prev) => prev.filter((e) => e.id !== id));
-      }, 750);
+      }, 780);
     },
     [playSfx]
   );
@@ -1229,15 +1237,15 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
             </div>
           )}
 
-          {/* Full-Height Starfield Radar Sky */}
+          {/* Full-Height Deep Space Sky */}
           <div
             className={`planeSky fsSky ${damageFlash ? 'hurtFlash' : ''} ${
               difficulty === 'hell' ? 'hellSky' : difficulty === 'extreme' ? 'extremeSky' : ''
             }`}
           >
+            <div className="spaceNebula" aria-hidden="true" />
             <div className="starfieldLayer slow" aria-hidden="true" />
             <div className="starfieldLayer fast" aria-hidden="true" />
-            <div className="planeRadarGrid" aria-hidden="true" />
 
             {/* Boss / Upgrade Tactical Alert Banner */}
             {bannerAlert && (
@@ -1336,16 +1344,18 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                   <button
                     key={en.uid}
                     type="button"
-                    className={`enemyPlane fsEnemy ${subMode === 'tap' ? 'clickable' : ''} ${
+                    className={`enemyFreeJet ${subMode === 'tap' ? 'clickable' : ''} ${
                       isPrefixMatch ? 'locked' : ''
                     }`}
                     style={{ left: `${en.x}%`, top: `${en.y}%` }}
                     onClick={() => handlePlaneClick(en)}
                   >
-                    <span className="enemyJetWrap">
+                    <span className="enemySpriteStage">
+                      <span className="enemyContrail" aria-hidden="true" />
+                      {isPrefixMatch && <span className="targetLockRing" aria-hidden="true" />}
                       <EnemyJetSvg variant={en.variant} />
                     </span>
-                    <span className="enemyPlaneTag">
+                    <span className={`enemyPillPlate ${isPrefixMatch ? 'locked' : ''}`}>
                       {subMode === 'typing' ? (
                         <>
                           <span className="enemyEnWord">
@@ -1362,37 +1372,87 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                 );
               })}
 
-            {/* Multi-beam Plasma Lasers based on Ship Tier */}
-            {lasers.map((l) => (
-              <div
-                key={l.id}
-                className={`laserSalvo tier${l.tier}`}
-                style={{
-                  left: `${l.toX}%`,
-                  top: `${l.toY}%`,
-                  height: `${Math.max(8, 90 - l.toY)}%`,
-                }}
-              >
-                <span className="laserBeam main" />
-                {l.tier >= 2 && <span className="laserBeam left" />}
-                {l.tier >= 3 && <span className="laserBeam right" />}
-              </div>
-            ))}
+            {/* True Angled SVG Homing Plasma Lasers */}
+            <svg className="laserOverlaySvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+              {lasers.map((l) => {
+                const col =
+                  l.tier >= 4 ? '#f59e6c' : l.tier === 3 ? '#f4d382' : l.tier === 2 ? '#60c7f2' : '#79d8b7';
+                return (
+                  <g key={l.id} className="laserFade">
+                    <line
+                      x1={l.fromX}
+                      y1={91}
+                      x2={l.toX}
+                      y2={l.toY}
+                      stroke={col}
+                      strokeWidth={l.tier >= 3 ? '0.65' : '0.45'}
+                      strokeLinecap="round"
+                    />
+                    <line
+                      x1={l.fromX}
+                      y1={91}
+                      x2={l.toX}
+                      y2={l.toY}
+                      stroke="#ffffff"
+                      strokeWidth="0.18"
+                      strokeLinecap="round"
+                    />
+                    {l.tier >= 2 && (
+                      <line
+                        x1={l.fromX - 1.4}
+                        y1={92}
+                        x2={l.toX}
+                        y2={l.toY}
+                        stroke={col}
+                        strokeWidth="0.24"
+                        strokeOpacity="0.8"
+                      />
+                    )}
+                    {l.tier >= 3 && (
+                      <line
+                        x1={l.fromX + 1.4}
+                        y1={92}
+                        x2={l.toX}
+                        y2={l.toY}
+                        stroke={col}
+                        strokeWidth="0.24"
+                        strokeOpacity="0.8"
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
 
-            {/* Radial Shockwave + Score Explosions */}
+            {/* Multi-Particle Radial Explosions + Floating Score */}
             {explosions.map((ex) => (
               <div
                 key={ex.id}
                 className={`planeBoom ${ex.big ? 'bigBoom' : ''}`}
                 style={{ left: `${ex.x}%`, top: `${ex.y}%` }}
               >
+                <span className="boomCore" />
                 <span className="boomRing" />
+                {[0, 36, 72, 108, 144, 180, 216, 252, 288, 324].map((deg) => (
+                  <span
+                    key={deg}
+                    className="boomSpark"
+                    style={{ '--deg': `${deg}deg` } as React.CSSProperties}
+                  />
+                ))}
                 <span className="boomText">{ex.text}</span>
               </div>
             ))}
 
-            {/* Upgraded Player Fighter Jet + Animated Thruster Flame */}
-            <div className="playerJetDock" style={{ left: `${shipX}%` }} aria-hidden="true">
+            {/* Upgraded Player Fighter Jet + Dynamic Banking + Thruster Flame */}
+            <div
+              className="playerJetDock"
+              style={{
+                left: `${shipX}%`,
+                transform: `translateX(-50%) rotate(${shipBank}deg)`,
+              }}
+              aria-hidden="true"
+            >
               <PlayerJetSvg tier={shipTier.level} />
               <span className={`jetFlame tier${shipTier.level}`} />
             </div>

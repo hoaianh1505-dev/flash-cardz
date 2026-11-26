@@ -6518,3 +6518,216 @@ body {
 .planeSky.hellSky {
   background: radial-gradient(circle at 50% 20%, #2e1518 0%, #160d10 75%);
 }
+
+
+/* ===== Polished Free-Flying Arcade Graphics (No Stiff Boxes, Angled Lasers, Spark Bursts, Nebula) ===== */
+.planeSky.fsSky {
+  background: radial-gradient(ellipse at 50% 85%, #162a33 0%, #0d171d 55%, #091015 100%);
+}
+
+.spaceNebula {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(44, 108, 94, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 78% 36%, rgba(168, 128, 56, 0.09) 0%, transparent 42%);
+}
+
+.planeSky.hellSky .spaceNebula {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(185, 55, 42, 0.22) 0%, transparent 48%),
+    radial-gradient(circle at 72% 60%, rgba(224, 118, 45, 0.14) 0%, transparent 45%);
+}
+
+/* Free-flying enemy aircraft (zero clunky outer box!) */
+.enemyFreeJet {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+  z-index: 4;
+  animation: jetFloat 2.4s ease-in-out infinite alternate;
+}
+
+.enemyFreeJet.clickable {
+  cursor: pointer;
+}
+
+.enemyFreeJet.clickable:hover .enemyPillPlate {
+  border-color: #79d8b7;
+  background: rgba(24, 52, 58, 0.94);
+  transform: scale(1.04);
+}
+
+@keyframes jetFloat {
+  from { margin-left: -4px; }
+  to { margin-left: 4px; }
+}
+
+.enemySpriteStage {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+}
+
+.enemyContrail {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(0deg, rgba(245, 158, 108, 0.85), transparent);
+  filter: blur(1px);
+}
+
+.targetLockRing {
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px dashed #79d8b7;
+  animation: spinLock 3s linear infinite;
+}
+
+@keyframes spinLock {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.enemyPillPlate {
+  padding: 5px 14px 6px;
+  border-radius: 999px;
+  background: rgba(14, 24, 30, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.36);
+  text-align: center;
+  max-width: 240px;
+  white-space: normal;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+
+.enemyPillPlate.locked {
+  border-color: #79d8b7;
+  background: rgba(20, 48, 44, 0.92);
+  box-shadow: 0 0 18px rgba(121, 216, 183, 0.35);
+}
+
+.enemyPillPlate b {
+  font-size: 14px;
+  color: #f3f7f5;
+}
+
+/* Full-sky SVG Angled Laser Overlay */
+.laserOverlaySvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.laserFade {
+  animation: laserFlash 0.24s ease-out forwards;
+}
+
+@keyframes laserFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Multi-Particle Explosion Core + Flying Sparks */
+.boomCore {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffdf7 0%, #f4d382 45%, rgba(232, 111, 88, 0) 75%);
+  transform: translate(-50%, -50%);
+  animation: coreBurst 0.38s ease-out forwards;
+}
+
+.planeBoom.bigBoom .boomCore {
+  width: 56px;
+  height: 56px;
+}
+
+@keyframes coreBurst {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.8); }
+}
+
+.boomSpark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f4d382;
+  box-shadow: 0 0 8px #f59e6c;
+  transform: translate(-50%, -50%) rotate(var(--deg)) translateY(0);
+  animation: sparkFly 0.52s cubic-bezier(0.15, 0.8, 0.25, 1) forwards;
+}
+
+.planeBoom.bigBoom .boomSpark {
+  width: 7px;
+  height: 7px;
+  background: #ff9c8f;
+}
+
+@keyframes sparkFly {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--deg)) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--deg)) translateY(-54px) scale(0.2);
+  }
+}
+
+/* Sleeker Cockpit Typing Console */
+.planeTypeBar.fsTypeBar {
+  background: #0f1a20;
+  border-top: 1px solid rgba(121, 216, 183, 0.16);
+  padding: 12px 24px;
+}
+
+.planeTypeBar.fsTypeBar input {
+  background: #16242c;
+  border: 1.5px solid #2b4552;
+  color: #f3f8f6;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 17px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+
+.planeTypeBar.fsTypeBar input:focus {
+  border-color: #79d8b7;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(121, 216, 183, 0.22);
+}
+
+.planeTypeBar.fsTypeBar button {
+  border-radius: 999px;
+  padding: 11px 28px;
+}
+
+.playerJetDock {
+  transition: left 0.16s ease-out, transform 0.16s ease-out;
+}
