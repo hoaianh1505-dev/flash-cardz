@@ -485,7 +485,9 @@ export default function SpeedBlitzGame({ cards, isGuest, onSpeak, onToast }: Pro
                 <div className="blitzEquals">nghĩa là</div>
                 <div className="blitzVi">{question.shownMeaning}</div>
 
-                {correction && <div className="blitzCorrection">Đáp án đúng: {correction}</div>}
+                <div className="blitzCorrectionSlot">
+                  {correction && <div className="blitzCorrection">Đáp án đúng: {correction}</div>}
+                </div>
 
                 <div className="blitzActions">
                   <button

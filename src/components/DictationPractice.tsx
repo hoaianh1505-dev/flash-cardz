@@ -405,21 +405,27 @@ export default function DictationPractice({
               <span className="dictCharCount">{targetWord.length} ký tự</span>
             </div>
 
-            {/* Optional Vietnamese hint */}
-            {(showMeaningHint || status !== 'typing') && (
-              <div className="dictMeaningBox">
-                <div className="dictMeaningVi">
-                  {current.meanings.map((m) => capFirst(m.text)).join(' · ')}
+            {/* Fixed-height Meaning Hint Slot — zero jump when toggling hint */}
+            <div className="dictMeaningSlot">
+              {showMeaningHint || status !== 'typing' ? (
+                <div className="dictMeaningBox" style={{ marginBottom: 0 }}>
+                  <div className="dictMeaningVi">
+                    {current.meanings.map((m) => capFirst(m.text)).join(' · ')}
+                  </div>
+                  <div className="dictMeaningSub">
+                    {detectPOS(current)
+                      .filter((t) => t !== 'other')
+                      .map((t) => POS_SHORT[t])
+                      .join(' ')}
+                    {current.meanings[0]?.phonetic ? `  ${current.meanings[0].phonetic}` : ''}
+                  </div>
                 </div>
-                <div className="dictMeaningSub">
-                  {detectPOS(current)
-                    .filter((t) => t !== 'other')
-                    .map((t) => POS_SHORT[t])
-                    .join(' ')}
-                  {current.meanings[0]?.phonetic ? `  ${current.meanings[0].phonetic}` : ''}
+              ) : (
+                <div className="dictMeaningPlaceholder">
+                  Bấm “Xem nghĩa Việt” ở trên nếu cần gợi ý nghĩa
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Input form */}
             <form className="dictForm" onSubmit={handleSubmit}>
@@ -476,21 +482,30 @@ export default function DictationPractice({
               </div>
             </form>
 
-            {/* Feedback banner when answered */}
-            {status !== 'typing' && (
-              <div className={`dictResultBanner ${status === 'correct' ? 'ok' : 'err'}`}>
-                {status === 'correct' ? (
-                  <span>
-                    Chính xác! <b>{capFirst(current.word)}</b>
-                  </span>
-                ) : (
-                  <span>
-                    Đáp án đúng: <b>{capFirst(current.word)}</b>
-                    {typed.trim() ? ` (bạn gõ: "${typed.trim()}")` : ''}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Fixed-height Feedback Slot — zero jump when checking answer */}
+            <div className="dictResultSlot">
+              {status !== 'typing' ? (
+                <div
+                  className={`dictResultBanner ${status === 'correct' ? 'ok' : 'err'}`}
+                  style={{ marginTop: 0 }}
+                >
+                  {status === 'correct' ? (
+                    <span>
+                      Chính xác! <b>{capFirst(current.word)}</b>
+                    </span>
+                  ) : (
+                    <span>
+                      Đáp án đúng: <b>{capFirst(current.word)}</b>
+                      {typed.trim() ? ` (bạn gõ: "${typed.trim()}")` : ''}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="dictResultPlaceholder">
+                  Nhập từ tiếng Anh rồi nhấn Enter để kiểm tra
+                </div>
+              )}
+            </div>
 
             <div className="kbdHint" style={{ marginTop: 14 }}>
               Mẹo: Nhấn <kbd>Ctrl</kbd> + <kbd>Space</kbd> để nghe lại ngay khi đang gõ · nhấn{' '}

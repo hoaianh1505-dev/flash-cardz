@@ -7226,3 +7226,104 @@ body {
     padding: 9px 10px;
   }
 }
+
+
+/* ===== Zero-Layout-Shift Fixed Result Slots across Speaking, Dictation, and Speed Blitz ===== */
+.speakResultSlot {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.speakResultSlot .speakResultBox {
+  width: 100%;
+  margin: 0;
+}
+
+.speakResultPlaceholder {
+  width: 100%;
+  max-width: 560px;
+  min-height: 78px;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: 1.5px dashed var(--line);
+  background: var(--paper);
+  color: var(--ink-faint);
+  font-size: 14.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.speakResultPlaceholder.active {
+  border-style: solid;
+  border-color: var(--teal);
+  background: var(--teal-bg);
+  color: var(--teal-deep);
+}
+
+.dictMeaningSlot {
+  min-height: 78px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: stretch;
+}
+
+.dictMeaningSlot .dictMeaningBox {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dictMeaningPlaceholder {
+  width: 100%;
+  border: 1.5px dashed var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+.dictResultSlot {
+  min-height: 54px;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.dictResultSlot .dictResultBanner {
+  width: 100%;
+}
+
+.dictResultPlaceholder {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--line);
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blitzCorrectionSlot {
+  min-height: 48px;
+  margin: -10px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blitzCorrectionSlot .blitzCorrection {
+  margin: 0;
+  width: 100%;
+}

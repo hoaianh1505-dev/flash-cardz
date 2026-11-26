@@ -534,29 +534,36 @@ export default function PronunciationPractice({
                   ? 'Đang lắng nghe... hãy đọc to từ tiếng Anh!'
                   : 'Bấm vào Micro rồi đọc to từ phía trên'}
               </div>
-              {interimText && !result && (
-                <div className="micInterim">Đang nhận diện: “{interimText}”</div>
-              )}
             </div>
 
-            {/* Pronunciation Score Result */}
-            {result && (
-              <div className={`speakResultBox ${result.passed ? 'ok' : 'err'}`}>
-                <div className="speakResultPct">{result.pct}%</div>
-                <div className="speakResultMeta">
-                  <b>
-                    {result.pct === 100
-                      ? 'Phát âm cực chuẩn!'
-                      : result.passed
-                        ? 'Khá chuẩn! Bạn đã vượt qua.'
-                        : 'Chưa khớp lắm — hãy nghe mẫu rồi thử đọc lại nhé!'}
-                  </b>
-                  <span>
-                    Micro nghe được: <b>“{result.heard || '(không rõ)'}”</b>
-                  </span>
+            {/* Fixed-height Result Slot — ZERO layout shift when result appears */}
+            <div className="speakResultSlot">
+              {result ? (
+                <div className={`speakResultBox ${result.passed ? 'ok' : 'err'}`}>
+                  <div className="speakResultPct">{result.pct}%</div>
+                  <div className="speakResultMeta">
+                    <b>
+                      {result.pct === 100
+                        ? 'Phát âm cực chuẩn!'
+                        : result.passed
+                          ? 'Khá chuẩn! Bạn đã vượt qua.'
+                          : 'Chưa khớp lắm — hãy nghe mẫu rồi thử đọc lại nhé!'}
+                    </b>
+                    <span>
+                      Micro nghe được: <b>“{result.heard || '(không rõ)'}”</b>
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : interimText ? (
+                <div className="speakResultPlaceholder active">
+                  Đang nhận diện: <b>“{interimText}”</b>
+                </div>
+              ) : (
+                <div className="speakResultPlaceholder">
+                  Kết quả chấm điểm phát âm sẽ hiển thị tại đây
+                </div>
+              )}
+            </div>
 
             {/* Bottom Controls */}
             <div className="dictActionRow" style={{ marginTop: 18 }}>
