@@ -1744,7 +1744,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           >
             <IconList size={18} />
             <span>Danh sách từ</span>
-            <span className="sidebarBadge">{stats.total}</span>
           </button>
           <button
             type="button"
