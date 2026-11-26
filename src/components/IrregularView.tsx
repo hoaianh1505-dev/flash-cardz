@@ -47,6 +47,7 @@ export default function IrregularView({ onSpeak }: Props) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'AAA' | 'ABA' | 'ABB' | 'ABC'>('all');
   const [hide, setHide] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
   const dataset = scope === 'top100' ? IRR_TOP_100 : IRR_ALL;
@@ -101,93 +102,109 @@ export default function IrregularView({ onSpeak }: Props) {
 
   return (
     <section className="pagePanel">
-      <div className="pagePanelHead">
+      <div className="pagePanelHead" style={{ marginBottom: filtersCollapsed ? 8 : 14 }}>
         <div>
           <h1 className="pageTitle">Bảng động từ bất quy tắc</h1>
-          <p className="pageSub">
-            Bấm vào bất kỳ ô V1 / V2 / V3 nào để nghe phát âm · bật chế độ che để tự kiểm tra.
-          </p>
+          {!filtersCollapsed && (
+            <p className="pageSub">
+              Bấm vào bất kỳ ô V1 / V2 / V3 nào để nghe phát âm · bật chế độ che để tự kiểm tra.
+            </p>
+          )}
         </div>
 
-        <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'top100'}
+              className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
+              onClick={() => {
+                setScope('top100');
+                setRevealed({});
+              }}
+            >
+              100 từ thông dụng
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'all360'}
+              className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
+              onClick={() => {
+                setScope('all360');
+                setRevealed({});
+              }}
+            >
+              Đầy đủ {IRR_ALL.length} từ
+            </button>
+          </div>
+
           <button
             type="button"
-            role="tab"
-            aria-selected={scope === 'top100'}
-            className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
-            onClick={() => {
-              setScope('top100');
-              setRevealed({});
-            }}
+            className="ghost small"
+            onClick={() => setFiltersCollapsed((v) => !v)}
           >
-            100 từ thông dụng
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={scope === 'all360'}
-            className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
-            onClick={() => {
-              setScope('all360');
-              setRevealed({});
-            }}
-          >
-            Đầy đủ {IRR_ALL.length} từ
+            {filtersCollapsed ? 'Hiện bộ lọc ▼' : 'Ẩn bộ lọc ▲'}
           </button>
         </div>
       </div>
 
-      <div className="libFilterRow">
-        <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
-          <IconSearch size={16} className="searchFieldIcon" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo V1, V2, V3 hoặc nghĩa tiếng Việt..."
-          />
-        </div>
+      {!filtersCollapsed && (
+        <>
+          <div className="libFilterRow">
+            <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
+              <IconSearch size={16} className="searchFieldIcon" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo V1, V2, V3 hoặc nghĩa tiếng Việt..."
+              />
+            </div>
 
-        <button
-          type="button"
-          className={`chip btnIconText ${hide ? 'active' : ''}`}
-          onClick={() => {
-            setHide((h) => !h);
-            setRevealed({});
-          }}
-          style={{ padding: '10px 16px', fontSize: 14 }}
-        >
-          <IconEyeOff size={16} />
-          <span>{hide ? 'Đang che V2 · V3 · Nghĩa' : 'Che V2 · V3 · Nghĩa để tự dò'}</span>
-        </button>
-      </div>
+            <button
+              type="button"
+              className={`chip btnIconText ${hide ? 'active' : ''}`}
+              onClick={() => {
+                setHide((h) => !h);
+                setRevealed({});
+              }}
+              style={{ padding: '10px 16px', fontSize: 14 }}
+            >
+              <IconEyeOff size={16} />
+              <span>{hide ? 'Đang che V2 · V3 · Nghĩa' : 'Che V2 · V3 · Nghĩa để tự dò'}</span>
+            </button>
+          </div>
 
-      <div className="catChips">
-        {chips.map(([k, label, n]) => (
-          <button
-            key={k}
-            type="button"
-            className={`chip ${filter === k ? 'active' : ''}`}
-            onClick={() => setFilter(k)}
-          >
-            {label} <span className="chipN">{n}</span>
-          </button>
-        ))}
-      </div>
+          <div className="catChips">
+            {chips.map(([k, label, n]) => (
+              <button
+                key={k}
+                type="button"
+                className={`chip ${filter === k ? 'active' : ''}`}
+                onClick={() => setFilter(k)}
+              >
+                {label} <span className="chipN">{n}</span>
+              </button>
+            ))}
+          </div>
 
-      <div className="azBar">
-        {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
-          <button
-            key={L}
-            type="button"
-            className={letterCounts[L] ? '' : 'off'}
-            onClick={() => jumpLetter(L)}
-          >
-            {L}
-          </button>
-        ))}
-      </div>
+          <div className="azBar">
+            {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
+              <button
+                key={L}
+                type="button"
+                className={letterCounts[L] ? '' : 'off'}
+                onClick={() => jumpLetter(L)}
+              >
+                {L}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
-      <div className="irrWrap pageIrrWrap">
+      <div className={`irrWrap pageIrrWrap ${filtersCollapsed ? 'expanded' : ''}`}>
         <table className={`irrTable ${hide ? 'irrHide' : ''}`}>
           <thead>
             <tr>

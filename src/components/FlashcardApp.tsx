@@ -224,6 +224,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
   const [libPage, setLibPage] = useState(1);
   const [libLimit, setLibLimit] = useState<25 | 50 | 100>(50);
   const [libLoading, setLibLoading] = useState(false);
+  const [libFiltersHidden, setLibFiltersHidden] = useState(false);
   const [libRefreshTick, setLibRefreshTick] = useState(0);
   const [libRemote, setLibRemote] = useState<{
     items: CardItem[];
@@ -2689,68 +2690,80 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                   <span className="libResultSummary">
                     {libLoading ? 'Đang lọc...' : `${libView.total} từ phù hợp`}
                   </span>
-                </div>
 
-                {/* POS Filter Chips */}
-                <div className="catChips compactChips">
                   <button
                     type="button"
-                    className={`chip ${libPos === 'all' ? 'active' : ''}`}
-                    onClick={() => {
-                      setLibPos('all');
-                      setLibPage(1);
-                    }}
+                    className="ghost small"
+                    onClick={() => setLibFiltersHidden((v) => !v)}
                   >
-                    Tất cả từ loại <span className="chipN">{libView.statusBaseLen}</span>
+                    {libFiltersHidden ? 'Hiện bộ lọc ▼' : 'Ẩn bộ lọc ▲'}
                   </button>
-                  {POS_LIST.map(([k, label]) => {
-                    const n = libView.posCounts[k] || 0;
-                    if (!n && libPos !== k) return null;
-                    return (
+                </div>
+
+                {!libFiltersHidden && (
+                  <>
+                    {/* POS Filter Chips */}
+                    <div className="catChips compactChips">
                       <button
-                        key={k}
                         type="button"
-                        className={`chip ${libPos === k ? 'active' : ''}`}
+                        className={`chip ${libPos === 'all' ? 'active' : ''}`}
                         onClick={() => {
-                          setLibPos(k);
+                          setLibPos('all');
                           setLibPage(1);
                         }}
                       >
-                        {label} <span className="chipN">{n}</span>
+                        Tất cả từ loại <span className="chipN">{libView.statusBaseLen}</span>
                       </button>
-                    );
-                  })}
-                </div>
+                      {POS_LIST.map(([k, label]) => {
+                        const n = libView.posCounts[k] || 0;
+                        if (!n && libPos !== k) return null;
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            className={`chip ${libPos === k ? 'active' : ''}`}
+                            onClick={() => {
+                              setLibPos(k);
+                              setLibPage(1);
+                            }}
+                          >
+                            {label} <span className="chipN">{n}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                {/* A-Z Filter Bar (calls API filter instead of manual DOM jump) */}
-                <div className="azBar compactAz">
-                  <button
-                    type="button"
-                    className={libLetter === 'all' ? 'active' : ''}
-                    onClick={() => {
-                      setLibLetter('all');
-                      setLibPage(1);
-                    }}
-                    style={{ width: 'auto', padding: '0 10px' }}
-                  >
-                    Tất cả
-                  </button>
-                  {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
-                    <button
-                      key={L}
-                      type="button"
-                      className={`${libLetter === L ? 'active' : ''} ${
-                        libView.letterCounts[L] ? '' : 'off'
-                      }`}
-                      onClick={() => {
-                        setLibLetter((cur) => (cur === L ? 'all' : L));
-                        setLibPage(1);
-                      }}
-                    >
-                      {L}
-                    </button>
-                  ))}
-                </div>
+                    {/* A-Z Filter Bar (calls API filter instead of manual DOM jump) */}
+                    <div className="azBar compactAz">
+                      <button
+                        type="button"
+                        className={libLetter === 'all' ? 'active' : ''}
+                        onClick={() => {
+                          setLibLetter('all');
+                          setLibPage(1);
+                        }}
+                        style={{ width: 'auto', padding: '0 10px' }}
+                      >
+                        Tất cả
+                      </button>
+                      {'#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((L) => (
+                        <button
+                          key={L}
+                          type="button"
+                          className={`${libLetter === L ? 'active' : ''} ${
+                            libView.letterCounts[L] ? '' : 'off'
+                          }`}
+                          onClick={() => {
+                            setLibLetter((cur) => (cur === L ? 'all' : L));
+                            setLibPage(1);
+                          }}
+                        >
+                          {L}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Scrollable Paginated List Body */}

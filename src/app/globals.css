@@ -6884,3 +6884,8 @@ body {
   border-color: #79d8b7;
   color: #79d8b7;
 }
+
+
+.pageIrrWrap.expanded {
+  max-height: calc(100vh - 200px);
+}
