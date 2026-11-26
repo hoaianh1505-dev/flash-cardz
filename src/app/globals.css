@@ -6889,3 +6889,14 @@ body {
 .pageIrrWrap.expanded {
   max-height: calc(100vh - 200px);
 }
+
+
+.spaceCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+}

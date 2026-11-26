@@ -187,99 +187,411 @@ function cleanTargetWord(word: string): string {
   return cleaned.split(/\s*[=/]\s*/)[0]?.trim() || cleaned;
 }
 
-/** Detailed Vector Player Fighter SVG (evolves across 4 upgrade tiers!) */
+/** 60fps HTML5 Canvas Deep Space Universe Background (3-layer stars + shooting stars + ringed planet) */
+function SpaceCanvasBg({ isHell }: { isHell: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let raf = 0;
+    let w = (canvas.width = canvas.clientWidth || window.innerWidth);
+    let h = (canvas.height = canvas.clientHeight || window.innerHeight);
+
+    const onResize = () => {
+      if (!canvas) return;
+      w = canvas.width = canvas.clientWidth || window.innerWidth;
+      h = canvas.height = canvas.clientHeight || window.innerHeight;
+    };
+    window.addEventListener('resize', onResize);
+
+    // 180 multi-depth parallax stars
+    const stars = Array.from({ length: 185 }, () => {
+      const layer = Math.random() < 0.55 ? 0 : Math.random() < 0.8 ? 1 : 2;
+      return {
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: layer === 0 ? 0.8 + Math.random() * 0.6 : layer === 1 ? 1.2 + Math.random() * 0.8 : 1.9 + Math.random() * 0.9,
+        speed: layer === 0 ? 12 : layer === 1 ? 30 : 62,
+        alpha: 0.35 + Math.random() * 0.65,
+        twinkle: Math.random() * Math.PI * 2,
+        tint:
+          Math.random() < 0.16
+            ? '#a9dcff'
+            : Math.random() < 0.12
+              ? '#ffe3a8'
+              : '#ffffff',
+      };
+    });
+
+    // Shooting star state
+    let meteor: { x: number; y: number; vx: number; vy: number; life: number } | null = null;
+    let meteorCooldown = 2.5;
+    let planetY = h * 0.26;
+    let last = performance.now();
+
+    const draw = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      // Deep space gradient
+      const bg = ctx.createLinearGradient(0, 0, 0, h);
+      if (isHell) {
+        bg.addColorStop(0, '#12060a');
+        bg.addColorStop(0.55, '#1d0b10');
+        bg.addColorStop(1, '#090407');
+      } else {
+        bg.addColorStop(0, '#04070f');
+        bg.addColorStop(0.55, '#091220');
+        bg.addColorStop(1, '#050a14');
+      }
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      // Soft distant cosmic nebula clouds
+      const neb1 = ctx.createRadialGradient(w * 0.22, h * 0.3, 10, w * 0.22, h * 0.3, w * 0.36);
+      neb1.addColorStop(0, isHell ? 'rgba(180, 48, 38, 0.18)' : 'rgba(34, 102, 112, 0.16)');
+      neb1.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = neb1;
+      ctx.fillRect(0, 0, w, h);
+
+      const neb2 = ctx.createRadialGradient(w * 0.78, h * 0.65, 10, w * 0.78, h * 0.65, w * 0.32);
+      neb2.addColorStop(0, isHell ? 'rgba(218, 102, 36, 0.12)' : 'rgba(62, 92, 148, 0.13)');
+      neb2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = neb2;
+      ctx.fillRect(0, 0, w, h);
+
+      // Distant ringed planet slowly drifting
+      planetY += 2.2 * dt;
+      if (planetY > h + 140) planetY = -140;
+      const px = w * 0.82;
+      const py = planetY;
+      ctx.save();
+      ctx.translate(px, py);
+      // Back ring
+      ctx.strokeStyle = isHell ? 'rgba(240, 146, 112, 0.28)' : 'rgba(155, 206, 224, 0.26)';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 74, 18, -0.26, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      // Planet sphere
+      const pGrad = ctx.createRadialGradient(-14, -14, 6, 0, 0, 38);
+      if (isHell) {
+        pGrad.addColorStop(0, '#c86852');
+        pGrad.addColorStop(0.55, '#632724');
+        pGrad.addColorStop(1, '#1d0b0d');
+      } else {
+        pGrad.addColorStop(0, '#5a8ea8');
+        pGrad.addColorStop(0.55, '#223d52');
+        pGrad.addColorStop(1, '#09131d');
+      }
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 38, 0, Math.PI * 2);
+      ctx.fill();
+      // Front ring
+      ctx.strokeStyle = isHell ? 'rgba(246, 184, 140, 0.38)' : 'rgba(182, 225, 238, 0.36)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 74, 18, -0.26, 0, Math.PI);
+      ctx.stroke();
+      ctx.restore();
+
+      // Distant small moon on left
+      ctx.save();
+      const mx = w * 0.14;
+      const my = ((planetY * 0.6 + h * 0.55) % (h + 120)) - 60;
+      const mGrad = ctx.createRadialGradient(mx - 6, my - 6, 2, mx, my, 18);
+      mGrad.addColorStop(0, '#cfd8e3');
+      mGrad.addColorStop(0.6, '#566475');
+      mGrad.addColorStop(1, '#0e1520');
+      ctx.fillStyle = mGrad;
+      ctx.beginPath();
+      ctx.arc(mx, my, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Parallax twinkling stars
+      for (const s of stars) {
+        s.y += s.speed * dt;
+        s.twinkle += dt * 3;
+        if (s.y > h) {
+          s.y = -2;
+          s.x = Math.random() * w;
+        }
+        const a = Math.max(0.15, Math.min(1, s.alpha + Math.sin(s.twinkle) * 0.22));
+        ctx.globalAlpha = a;
+        ctx.fillStyle = s.tint;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Occasional shooting star (sao băng)
+      meteorCooldown -= dt;
+      if (!meteor && meteorCooldown <= 0) {
+        meteor = {
+          x: Math.random() * w * 0.8 + w * 0.1,
+          y: Math.random() * h * 0.35,
+          vx: (Math.random() < 0.5 ? -1 : 1) * (420 + Math.random() * 240),
+          vy: 260 + Math.random() * 140,
+          life: 0.65,
+        };
+        meteorCooldown = 3.5 + Math.random() * 5;
+      }
+      if (meteor) {
+        meteor.x += meteor.vx * dt;
+        meteor.y += meteor.vy * dt;
+        meteor.life -= dt;
+        if (meteor.life <= 0) {
+          meteor = null;
+        } else {
+          const tailX = meteor.x - meteor.vx * 0.14;
+          const tailY = meteor.y - meteor.vy * 0.14;
+          const mg = ctx.createLinearGradient(meteor.x, meteor.y, tailX, tailY);
+          mg.addColorStop(0, `rgba(255, 253, 240, ${Math.min(1, meteor.life * 2)})`);
+          mg.addColorStop(1, 'rgba(121, 216, 183, 0)');
+          ctx.strokeStyle = mg;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(meteor.x, meteor.y);
+          ctx.lineTo(tailX, tailY);
+          ctx.stroke();
+        }
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [isHell]);
+
+  return <canvas ref={canvasRef} className="spaceCanvas" aria-hidden="true" />;
+}
+
+/** High-Detail Handcrafted Sci-Fi Player Starfighter SVG (4 mechanical upgrade tiers) */
 function PlayerJetSvg({ tier }: { tier: number }) {
   const accent = SHIP_TIERS[Math.min(tier - 1, 3)].color;
+  const uid = `pj-${tier}`;
   return (
-    <svg width="62" height="62" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      {/* Tier 3+ energy shield aura */}
+    <svg width="74" height="74" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${uid}-hull`} x1="40" y1="6" x2="40" y2="68" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#d8e3e8" />
+          <stop offset="45%" stopColor="#5e7885" />
+          <stop offset="100%" stopColor="#263842" />
+        </linearGradient>
+        <linearGradient id={`${uid}-wing`} x1="12" y1="30" x2="68" y2="56" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#3c5460" />
+          <stop offset="50%" stopColor="#22343d" />
+          <stop offset="100%" stopColor="#142128" />
+        </linearGradient>
+        <linearGradient id={`${uid}-glass`} x1="40" y1="18" x2="40" y2="38" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#e8fbff" />
+          <stop offset="40%" stopColor={accent} />
+          <stop offset="100%" stopColor="#13333d" />
+        </linearGradient>
+      </defs>
+
+      {/* Tier 3+ subtle deflector shield */}
       {tier >= 3 && (
         <ellipse
-          cx="32"
-          cy="32"
-          rx="28"
-          ry="24"
+          cx="40"
+          cy="40"
+          rx="35"
+          ry="31"
           stroke={accent}
-          strokeOpacity="0.45"
-          strokeWidth="1.5"
-          strokeDasharray="4 4"
+          strokeOpacity="0.38"
+          strokeWidth="1.4"
+          strokeDasharray="6 4"
         />
       )}
-      {/* Outer extra wings for Tier 2+ */}
+
+      {/* Swept heavy outer wings (Tier 2+) */}
       {tier >= 2 && (
         <path
-          d="M6 42L22 25H42L58 42L52 46L39 39H25L12 46L6 42Z"
-          fill="#1b3a44"
-          stroke={accent}
-          strokeWidth="1.6"
+          d="M6 52L24 31H56L74 52L69 58L52 49H28L11 58L6 52Z"
+          fill={`url(#${uid}-wing)`}
+          stroke="#7596a6"
+          strokeWidth="1.2"
         />
       )}
-      {/* Extra wing cannons for Tier 3+ */}
-      {tier >= 3 && (
+
+      {/* Wing-mounted twin plasma pods (Tier 2+) */}
+      {tier >= 2 && (
         <>
-          <rect x="13" y="23" width="3.5" height="12" rx="1.5" fill={accent} />
-          <rect x="47.5" y="23" width="3.5" height="12" rx="1.5" fill={accent} />
+          <rect x="16" y="34" width="4.5" height="16" rx="2" fill="#2c424d" stroke={accent} strokeWidth="1.1" />
+          <rect x="59.5" y="34" width="4.5" height="16" rx="2" fill="#2c424d" stroke={accent} strokeWidth="1.1" />
+          <circle cx="18.25" cy="34" r="1.6" fill={accent} />
+          <circle cx="61.75" cy="34" r="1.6" fill={accent} />
         </>
       )}
-      {/* Main delta fuselage */}
+
+      {/* Primary fighter wings with panel lines */}
       <path
-        d="M32 6L41 26L52 38L49 44L38 40L36 50H28L26 40L15 44L12 38L23 26L32 6Z"
-        fill="#244c44"
-        stroke={accent}
-        strokeWidth="2"
+        d="M40 16L66 48L62 55L46 49L44 62H36L34 49L18 55L14 48L40 16Z"
+        fill={`url(#${uid}-wing)`}
+        stroke="#8aa7b5"
+        strokeWidth="1.3"
         strokeLinejoin="round"
       />
-      {/* Cockpit canopy */}
-      <path d="M32 16L36 27H28L32 16Z" fill={accent} fillOpacity="0.9" />
-      {/* Center stripe for Tier 4 */}
-      {tier >= 4 && <path d="M32 8V48" stroke="#fffdf7" strokeWidth="1.8" strokeOpacity="0.7" />}
+
+      {/* Forward canard stabilizers (Tier 3+) */}
+      {tier >= 3 && (
+        <path
+          d="M40 12L52 24L49 28L40 22L31 28L28 24L40 12Z"
+          fill="#4a6673"
+          stroke={accent}
+          strokeWidth="1.1"
+        />
+      )}
+
+      {/* Central armored fuselage */}
+      <path
+        d="M40 5L47 22L49 48L45 64H35L31 48L33 22L40 5Z"
+        fill={`url(#${uid}-hull)`}
+        stroke="#c5d6de"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+
+      {/* Fuselage panel seam & accent stripe */}
+      <path d="M40 7V62" stroke="#182830" strokeWidth="1" strokeOpacity="0.6" />
+      <path d="M35 45H45M34 52H46" stroke="#16242b" strokeWidth="1.2" />
+      <path d="M23 47L32 39M57 47L48 39" stroke={accent} strokeWidth="1.8" strokeLinecap="round" />
+
+      {/* Twin engine exhaust nozzles */}
+      <rect x="33.5" y="61" width="5" height="5" rx="1.2" fill="#182329" stroke={accent} strokeWidth="1" />
+      <rect x="41.5" y="61" width="5" height="5" rx="1.2" fill="#182329" stroke={accent} strokeWidth="1" />
+
+      {/* Cockpit canopy with glass reflection glint */}
+      <path d="M40 18L44.5 31L40 37L35.5 31L40 18Z" fill={`url(#${uid}-glass)`} stroke="#dff7ff" strokeWidth="0.9" />
+      <path d="M38.5 22L37.5 29" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.8" />
+
+      {/* Wingtip navigation lights */}
+      <circle cx="15" cy="49" r="1.8" fill="#ff7066" />
+      <circle cx="65" cy="49" r="1.8" fill="#79d8b7" />
+      {tier >= 4 && (
+        <>
+          <circle cx="7" cy="52" r="2.1" fill={accent} />
+          <circle cx="73" cy="52" r="2.1" fill={accent} />
+        </>
+      )}
     </svg>
   );
 }
 
-/** Detailed Enemy Fighter SVG */
+/** High-Detail Enemy Spacecraft SVG (3 distinct mechanical silhouettes) */
 function EnemyJetSvg({ variant }: { variant: PlaneEnemy['variant'] }) {
-  const hull =
-    variant === 'heavy' ? '#5a2e2e' : variant === 'interceptor' ? '#4a3228' : '#3d2b2b';
-  const trim =
-    variant === 'heavy' ? '#f59e6c' : variant === 'interceptor' ? '#f4d382' : '#e67c63';
+  const hullTop = variant === 'heavy' ? '#8c3f38' : variant === 'interceptor' ? '#875736' : '#6c424c';
+  const hullBot = variant === 'heavy' ? '#361515' : variant === 'interceptor' ? '#331d13' : '#26141a';
+  const trim = variant === 'heavy' ? '#ff9d76' : variant === 'interceptor' ? '#f4d382' : '#f08275';
+  const gid = `ej-${variant}`;
+
+  if (variant === 'heavy') {
+    return (
+      <svg width="56" height="48" viewBox="0 0 64 56" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id={gid} x1="32" y1="4" x2="32" y2="52" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor={hullTop} />
+            <stop offset="100%" stopColor={hullBot} />
+          </linearGradient>
+        </defs>
+        {/* Heavy twin-hull bomber */}
+        <path
+          d="M32 50L22 34L6 26L8 14L22 17L26 6H38L42 17L56 14L58 26L42 34L32 50Z"
+          fill={`url(#${gid})`}
+          stroke={trim}
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <rect x="13" y="16" width="5" height="14" rx="2" fill="#230e0e" stroke={trim} strokeWidth="1" />
+        <rect x="46" y="16" width="5" height="14" rx="2" fill="#230e0e" stroke={trim} strokeWidth="1" />
+        <path d="M26 16H38L35 34H29L26 16Z" fill="#2b1113" stroke={trim} strokeWidth="1.1" />
+        <circle cx="32" cy="26" r="4" fill={trim} />
+        <circle cx="32" cy="26" r="1.8" fill="#fff6db" />
+      </svg>
+    );
+  }
+
   return (
-    <svg width="42" height="36" viewBox="0 0 48 40" fill="none" aria-hidden="true">
+    <svg width="50" height="44" viewBox="0 0 56 48" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={gid} x1="28" y1="4" x2="28" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={hullTop} />
+          <stop offset="100%" stopColor={hullBot} />
+        </linearGradient>
+      </defs>
+      {/* Sleek forward-swept interceptor */}
       <path
-        d="M24 36L16 22L4 12L8 8L20 13L22 4H26L28 13L40 8L44 12L32 22L24 36Z"
-        fill={hull}
+        d="M28 44L20 26L4 14L9 8L22 16L25 5H31L34 16L47 8L52 14L36 26L28 44Z"
+        fill={`url(#${gid})`}
         stroke={trim}
-        strokeWidth="1.8"
+        strokeWidth="1.5"
         strokeLinejoin="round"
       />
-      <circle cx="24" cy="20" r="3" fill={trim} />
+      <path d="M12 13L22 21M44 13L34 21" stroke="#fff2d9" strokeOpacity="0.45" strokeWidth="1.2" />
+      <path d="M28 36L24 22H32L28 36Z" fill="#241015" stroke={trim} strokeWidth="1" />
+      <ellipse cx="28" cy="24" rx="2.6" ry="4" fill={trim} />
+      <circle cx="8" cy="12" r="1.5" fill={trim} />
+      <circle cx="48" cy="12" r="1.5" fill={trim} />
     </svg>
   );
 }
 
-/** Giant Armored Boss Dreadnought SVG */
+/** Massive Multi-Deck Armored Space Battleship Boss SVG */
 function BossShipSvg() {
   return (
-    <svg width="160" height="84" viewBox="0 0 180 92" fill="none" aria-hidden="true">
+    <svg width="210" height="106" viewBox="0 0 220 112" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="boss-hull" x1="110" y1="8" x2="110" y2="104" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#692d34" />
+          <stop offset="55%" stopColor="#35181e" />
+          <stop offset="100%" stopColor="#1b0b0f" />
+        </linearGradient>
+        <linearGradient id="boss-deck" x1="110" y1="18" x2="110" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#944248" />
+          <stop offset="100%" stopColor="#401b21" />
+        </linearGradient>
+      </defs>
+      {/* Rear thruster vents */}
+      <rect x="64" y="6" width="14" height="10" rx="3" fill="#ff9468" fillOpacity="0.7" />
+      <rect x="103" y="4" width="14" height="12" rx="3" fill="#ffd984" fillOpacity="0.85" />
+      <rect x="142" y="6" width="14" height="10" rx="3" fill="#ff9468" fillOpacity="0.7" />
+      {/* Main battleship wing-hull */}
       <path
-        d="M90 84L64 60L18 46L8 26L44 24L60 10H120L136 24L172 26L162 46L116 60L90 84Z"
-        fill="#3a1f24"
-        stroke="#e86f58"
-        strokeWidth="2.5"
+        d="M110 104L78 76L22 58L8 34L48 28L70 12H150L172 28L212 34L198 58L142 76L110 104Z"
+        fill="url(#boss-hull)"
+        stroke="#f07e68"
+        strokeWidth="2.2"
         strokeLinejoin="round"
       />
+      {/* Armored upper command deck */}
       <path
-        d="M66 22H114L124 44L90 66L56 44L66 22Z"
-        fill="#53282e"
+        d="M78 22H142L156 50L110 82L64 50L78 22Z"
+        fill="url(#boss-deck)"
         stroke="#f4d382"
-        strokeWidth="1.8"
+        strokeWidth="1.6"
       />
-      {/* Glowing energy core */}
-      <circle cx="90" cy="42" r="10" fill="#e86f58" />
-      <circle cx="90" cy="42" r="5" fill="#fff2cc" />
-      {/* Wing turrets */}
-      <rect x="28" y="34" width="12" height="18" rx="3" fill="#2a161a" stroke="#f4d382" strokeWidth="1.5" />
-      <rect x="140" y="34" width="12" height="18" rx="3" fill="#2a161a" stroke="#f4d382" strokeWidth="1.5" />
+      {/* Panel seams & armor ribs */}
+      <path d="M40 38L72 48M180 38L148 48M84 36H136M88 60H132" stroke="#1d0b0f" strokeWidth="2" />
+      {/* Wing plasma battery turrets */}
+      <rect x="28" y="38" width="14" height="24" rx="4" fill="#231015" stroke="#f4d382" strokeWidth="1.5" />
+      <rect x="178" y="38" width="14" height="24" rx="4" fill="#231015" stroke="#f4d382" strokeWidth="1.5" />
+      <circle cx="35" cy="60" r="3" fill="#ff9468" />
+      <circle cx="185" cy="60" r="3" fill="#ff9468" />
+      {/* Central reactor core */}
+      <circle cx="110" cy="50" r="15" fill="#230d12" stroke="#f4d382" strokeWidth="2" />
+      <circle cx="110" cy="50" r="10" fill="#e8644c" />
+      <circle cx="110" cy="50" r="5" fill="#fff6d6" />
     </svg>
   );
 }
@@ -1308,15 +1620,13 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
             </div>
           )}
 
-          {/* Full-Height Deep Space Sky */}
+          {/* Full-Height Deep Space Universe Canvas */}
           <div
             className={`planeSky fsSky ${damageFlash ? 'hurtFlash' : ''} ${
               difficulty === 'hell' ? 'hellSky' : difficulty === 'extreme' ? 'extremeSky' : ''
             }`}
           >
-            <div className="spaceNebula" aria-hidden="true" />
-            <div className="starfieldLayer slow" aria-hidden="true" />
-            <div className="starfieldLayer fast" aria-hidden="true" />
+            <SpaceCanvasBg isHell={difficulty === 'hell'} />
 
             {/* Boss / Upgrade Tactical Alert Banner */}
             {bannerAlert && (
