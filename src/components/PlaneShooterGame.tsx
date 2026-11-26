@@ -3,23 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst, keyOf } from '@/lib/pos';
 import type { CardItem } from './FlashcardApp';
-import { IconPlane, IconRotateCcw, IconVolume } from './Icons';
+import { IconPlane, IconRotateCcw, IconVolume, IconX } from './Icons';
 
 interface PlaneEnemy {
   uid: string;
   card: CardItem;
-  label: string;
-  subLabel?: string;
-  x: number; // percentage 14..86
+  targetWord: string; // clean English word for typing mode
+  label: string; // Vietnamese meaning
+  x: number; // percentage 12..88
   y: number; // percentage 0..100
   speed: number; // % per second
   isTarget: boolean;
-  hitFlash?: boolean;
 }
 
 interface LaserShot {
   id: number;
-  fromX: number;
   toX: number;
   toY: number;
 }
@@ -65,18 +63,13 @@ function cleanTargetWord(word: string): string {
   return cleaned.split(/\s*[=/]\s*/)[0]?.trim() || cleaned;
 }
 
-function maskWordHint(word: string): string {
-  const w = cleanTargetWord(word);
-  if (w.length <= 2) return w;
-  return `${w[0]}${'·'.repeat(Math.min(w.length - 1, 10))} (${w.length})`;
-}
-
 export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: Props) {
-  const [subMode, setSubMode] = useState<'tap' | 'typing'>('tap');
+  const [subMode, setSubMode] = useState<'tap' | 'typing'>('typing');
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'over'>('idle');
+  const [confirmExit, setConfirmExit] = useState(false);
 
-  // Game live state
+  // Live state
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [combo, setCombo] = useState(0);
@@ -91,7 +84,6 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const [explosions, setExplosions] = useState<ExplosionFx[]>([]);
   const [isNewRecord, setIsNewRecord] = useState(false);
 
-  // Saved scores from MongoDB (or localStorage for Guest)
   const [personalBest, setPersonalBest] = useState<{
     score: number;
     wordsCleared: number;
@@ -106,7 +98,6 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const lastTickRef = useRef<number>(0);
   const spawnTimerRef = useRef<number>(0);
 
-  // Refs synced with latest state for animation loop
   const scoreRef = useRef(0);
   const wordsClearedRef = useRef(0);
   const maxComboRef = useRef(0);
@@ -168,8 +159,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           const raw = localStorage.getItem(GUEST_GAME_KEY);
           const list: ScoreEntry[] = raw ? JSON.parse(raw) : [];
           const prevMax = list.reduce((m, x) => Math.max(m, x.score), 0);
-          const rec = finalScore > prevMax;
-          setIsNewRecord(rec);
+          setIsNewRecord(finalScore > prevMax);
           const entry: ScoreEntry = {
             id: `g-${Date.now()}`,
             displayName: 'Khách',
@@ -215,22 +205,22 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     [isGuest, subMode, loadScores]
   );
 
-  // Spawn a wave of 3 planes for Tap Mode (1 correct meaning + 2 distractors)
   const spawnTapSquadron = useCallback(
     (curWave: number) => {
       if (pool.length < 4) return;
       const picked = shuffleArray(pool).slice(0, 3);
       const target = picked[0];
       const lanes = shuffleArray([20, 50, 80]);
-      const baseSpeed = Math.min(18, 7.5 + curWave * 1.15);
+      const baseSpeed = Math.min(16, 6.8 + curWave * 1.05);
 
       const squad: PlaneEnemy[] = picked.map((card, i) => ({
         uid: `${Date.now()}-${i}-${Math.random()}`,
         card,
+        targetWord: cleanTargetWord(card.word),
         label: capFirst(card.meanings[0]?.text || card.word),
         x: lanes[i],
-        y: -6 - i * 4,
-        speed: baseSpeed + (Math.random() * 1.6 - 0.8),
+        y: -5 - i * 4,
+        speed: baseSpeed + (Math.random() * 1.4 - 0.7),
         isTarget: card.id === target.id,
       }));
 
@@ -241,20 +231,19 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     [pool, onSpeak]
   );
 
-  // Spawn 1 enemy plane for Typing Mode
   const spawnTypingPlane = useCallback(
     (curWave: number) => {
       if (!pool.length) return;
       const card = pool[Math.floor(Math.random() * pool.length)];
-      const lane = 18 + Math.random() * 64;
-      const speed = Math.min(15, 5.5 + curWave * 0.9);
+      const lane = 15 + Math.random() * 70;
+      const speed = Math.min(13, 4.8 + curWave * 0.8);
       const plane: PlaneEnemy = {
         uid: `${Date.now()}-${Math.random()}`,
         card,
+        targetWord: cleanTargetWord(card.word),
         label: capFirst(card.meanings[0]?.text || card.word),
-        subLabel: maskWordHint(card.word),
         x: lane,
-        y: -8,
+        y: -7,
         speed,
         isTarget: true,
       };
@@ -266,7 +255,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
   const fireFx = useCallback((targetX: number, targetY: number, pointsText: string) => {
     const id = Date.now() + Math.random();
     setShipX(targetX);
-    setLasers((prev) => [...prev, { id, fromX: targetX, toX: targetX, toY: targetY }]);
+    setLasers((prev) => [...prev, { id, toX: targetX, toY: targetY }]);
     setExplosions((prev) => [...prev, { id, x: targetX, y: targetY, text: pointsText }]);
     setTimeout(() => {
       setLasers((prev) => prev.filter((l) => l.id !== id));
@@ -291,6 +280,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     setEnemies([]);
     setTyped('');
     setIsNewRecord(false);
+    setConfirmExit(false);
     scoreRef.current = 0;
     wordsClearedRef.current = 0;
     maxComboRef.current = 0;
@@ -305,13 +295,13 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       spawnTapSquadron(1);
     } else {
       spawnTypingPlane(1);
-      setTimeout(() => inputRef.current?.focus(), 60);
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [pool.length, onToast, subMode, spawnTapSquadron, spawnTypingPlane]);
 
-  // Main 60fps requestAnimationFrame loop
+  // Pause animation loop while Exit Confirm modal is open
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || confirmExit) return;
     let raf = 0;
 
     const loop = (now: number) => {
@@ -323,7 +313,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         const next: PlaneEnemy[] = [];
         for (const p of prev) {
           const ny = p.y + p.speed * dt;
-          if (ny >= 86) {
+          if (ny >= 88) {
             if (p.isTarget) breached = true;
           } else {
             next.push({ ...p, y: ny });
@@ -353,7 +343,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
 
       if (subMode === 'typing') {
         spawnTimerRef.current += dt;
-        const interval = Math.max(1.8, 3.6 - waveRef.current * 0.2);
+        const interval = Math.max(1.9, 3.6 - waveRef.current * 0.2);
         if (spawnTimerRef.current >= interval) {
           spawnTimerRef.current = 0;
           spawnTypingPlane(waveRef.current);
@@ -366,7 +356,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     lastTickRef.current = performance.now();
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [phase, subMode, saveScore, spawnTapSquadron, spawnTypingPlane]);
+  }, [phase, confirmExit, subMode, saveScore, spawnTapSquadron, spawnTypingPlane]);
 
   const registerHit = useCallback(
     (enemy: PlaneEnemy) => {
@@ -389,7 +379,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
       setWave(nextWave);
 
       fireFx(enemy.x, enemy.y, `+${pts}`);
-      onSpeak(cleanTargetWord(enemy.card.word), false);
+      onSpeak(enemy.targetWord, false);
 
       if (subMode === 'tap') {
         setEnemies([]);
@@ -409,9 +399,8 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     [combo, maxCombo, fireFx, onSpeak, subMode, lives, spawnTapSquadron, spawnTypingPlane]
   );
 
-  // Tap mode: click a plane
   const handlePlaneClick = (enemy: PlaneEnemy) => {
-    if (phase !== 'playing' || subMode !== 'tap') return;
+    if (phase !== 'playing' || subMode !== 'tap' || confirmExit) return;
     if (enemy.isTarget) {
       registerHit(enemy);
     } else {
@@ -434,23 +423,26 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     }
   };
 
-  // Typing mode: submit typed English word to shoot matching enemy
-  const handleTypingSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phase !== 'playing') return;
-    const cleaned = keyOf(typed);
+  // ZType-style instant auto-fire when typed string matches an enemy plane's English word!
+  const handleTypingChange = (val: string) => {
+    setTyped(val);
+    if (phase !== 'playing' || confirmExit) return;
+    const cleaned = keyOf(val);
     if (!cleaned) return;
 
-    const match = enemies.find((en) => {
-      const rawClean = en.card.word.replace(/\([^)]*\)/g, ' ');
-      const candidates = [
-        keyOf(cleanTargetWord(en.card.word)),
-        keyOf(en.card.word),
-        ...rawClean.split(/[/=]/).map((s) => keyOf(s)),
-      ].filter(Boolean);
-      return candidates.includes(cleaned);
-    });
+    const match = enemies.find((en) => keyOf(en.targetWord) === cleaned);
+    if (match) {
+      setTyped('');
+      registerHit(match);
+    }
+  };
 
+  const handleTypingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phase !== 'playing' || confirmExit) return;
+    const cleaned = keyOf(typed);
+    if (!cleaned) return;
+    const match = enemies.find((en) => keyOf(en.targetWord) === cleaned);
     if (match) {
       setTyped('');
       registerHit(match);
@@ -460,28 +452,44 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
     }
   };
 
+  const requestExit = () => {
+    if (phase === 'playing') {
+      setConfirmExit(true);
+    } else {
+      setPhase('idle');
+      setConfirmExit(false);
+    }
+  };
+
+  const confirmQuitGame = () => {
+    setConfirmExit(false);
+    setPhase('idle');
+    setEnemies([]);
+    setTyped('');
+  };
+
+  const typedLower = typed.trim().toLowerCase();
+
   return (
     <div className="planeGameWrap">
-      {/* Top Config & Personal Best Bar */}
+      {/* Idle Lobby View (Config + Start Card + Leaderboard) */}
       <div className="dictToolbar">
         <div className="dictToolbarGroup">
           <span className="dictToolbarLabel">Kiểu bắn:</span>
           <div className="segGroup">
             <button
               type="button"
-              className={`segBtn ${subMode === 'tap' ? 'active' : ''}`}
-              disabled={phase === 'playing'}
-              onClick={() => setSubMode('tap')}
+              className={`segBtn ${subMode === 'typing' ? 'active' : ''}`}
+              onClick={() => setSubMode('typing')}
             >
-              Chạm bắn (PC &amp; Mobile)
+              Gõ chữ bắn hạ (ZType)
             </button>
             <button
               type="button"
-              className={`segBtn ${subMode === 'typing' ? 'active' : ''}`}
-              disabled={phase === 'playing'}
-              onClick={() => setSubMode('typing')}
+              className={`segBtn ${subMode === 'tap' ? 'active' : ''}`}
+              onClick={() => setSubMode('tap')}
             >
-              Gõ từ bắn hạ
+              Chạm bắn nghĩa đúng
             </button>
           </div>
         </div>
@@ -500,7 +508,6 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                 key={k}
                 type="button"
                 className={`segBtn ${poolMode === k ? 'active' : ''}`}
-                disabled={phase === 'playing'}
                 onClick={() => setPoolMode(k)}
               >
                 {label}
@@ -516,157 +523,24 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
         )}
       </div>
 
-      {/* Main Arena + Leaderboard Layout */}
       <div className="planeLayout">
         <div className="planeArenaCard">
-          {/* HUD Bar */}
-          <div className="planeHud">
-            <div className="planeHudStat">
-              <span>ĐIỂM</span>
-              <b>{score}</b>
+          <div className="planeLobbyBox">
+            <div className="planeHeroIcon">
+              <IconPlane size={36} />
             </div>
-            <div className="planeHudStat">
-              <span>WAVE</span>
-              <b>{wave}</b>
-            </div>
-            <div className="planeHudStat">
-              <span>COMBO</span>
-              <b>×{combo}</b>
-            </div>
-            <div className="planeHudLives" aria-label={`Còn ${lives} mạng`}>
-              {[0, 1, 2].map((i) => (
-                <span key={i} className={`lifeDot ${i < lives ? 'on' : ''}`} />
-              ))}
-            </div>
+            <h3>Bắn máy bay từ vựng TOEIC</h3>
+            <p>
+              {subMode === 'typing'
+                ? 'Mỗi máy bay địch hiển thị rõ từ tiếng Anh và nghĩa tiếng Việt. Gõ nhanh từng chữ cái — chữ khớp sẽ sáng xanh và tự động khai hoả bắn hạ!'
+                : 'Xem từ tiếng Anh ở thanh mục tiêu và bấm nhanh vào máy bay mang nghĩa tiếng Việt đúng trước khi nó rơi xuống!'}
+            </p>
+            <button type="button" className="primary gameBigStartBtn" onClick={startGame}>
+              Vào sân chơi toàn màn hình →
+            </button>
           </div>
-
-          {/* Target Prompt Banner for Tap Mode */}
-          {phase === 'playing' && subMode === 'tap' && targetCard && (
-            <div className="planeTargetBanner">
-              <span className="planeTargetLabel">BẮN NGHĨA ĐÚNG CỦA TỪ:</span>
-              <b className="planeTargetWord">{capFirst(targetCard.word)}</b>
-              <button
-                type="button"
-                className="planeSpeakMini"
-                onClick={() => onSpeak(cleanTargetWord(targetCard.word), false)}
-                title="Nghe lại"
-              >
-                <IconVolume size={15} />
-              </button>
-            </div>
-          )}
-
-          {/* Sky Radar Arena */}
-          <div className="planeSky">
-            {/* Subtle radar grid lines */}
-            <div className="planeRadarGrid" aria-hidden="true" />
-
-            {/* Idle Overlay */}
-            {phase === 'idle' && (
-              <div className="planeOverlay">
-                <div className="planeHeroIcon">
-                  <IconPlane size={34} />
-                </div>
-                <h3>Bắn máy bay từ vựng TOEIC</h3>
-                <p>
-                  {subMode === 'tap'
-                    ? 'Xem từ tiếng Anh ở thanh mục tiêu và bấm thật nhanh vào máy bay mang nghĩa tiếng Việt đúng trước khi nó rơi xuống!'
-                    : 'Máy bay địch mang nghĩa tiếng Việt đang lao xuống — gõ đúng từ tiếng Anh rồi nhấn Enter để khai hoả bắn hạ!'}
-                </p>
-                <button type="button" className="primary" onClick={startGame}>
-                  Bắt đầu chiến đấu
-                </button>
-              </div>
-            )}
-
-            {/* Game Over Overlay */}
-            {phase === 'over' && (
-              <div className="planeOverlay">
-                {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
-                <h3>Trận chiến kết thúc</h3>
-                <div className="planeOverScore">{score} điểm</div>
-                <p>
-                  Hạ <b>{wordsCleared}</b> máy bay · Wave <b>{wave}</b> · Combo cao nhất{' '}
-                  <b>×{maxCombo}</b>
-                </p>
-                <button type="button" className="primary btnIconText" onClick={startGame}>
-                  <IconRotateCcw size={16} />
-                  <span>Chơi lại</span>
-                </button>
-              </div>
-            )}
-
-            {/* Enemy Planes */}
-            {phase === 'playing' &&
-              enemies.map((en) => (
-                <button
-                  key={en.uid}
-                  type="button"
-                  className={`enemyPlane ${subMode === 'tap' ? 'clickable' : ''}`}
-                  style={{ left: `${en.x}%`, top: `${en.y}%` }}
-                  onClick={() => handlePlaneClick(en)}
-                >
-                  <span className="enemyPlaneBody">
-                    <IconPlane size={20} style={{ transform: 'rotate(135deg)' }} />
-                  </span>
-                  <span className="enemyPlaneTag">
-                    <b>{en.label}</b>
-                    {en.subLabel && <small>{en.subLabel}</small>}
-                  </span>
-                </button>
-              ))}
-
-            {/* Laser Shots */}
-            {lasers.map((l) => (
-              <div
-                key={l.id}
-                className="planeLaser"
-                style={{
-                  left: `${l.toX}%`,
-                  top: `${l.toY}%`,
-                  height: `${Math.max(8, 90 - l.toY)}%`,
-                }}
-              />
-            ))}
-
-            {/* Explosion Sparks */}
-            {explosions.map((ex) => (
-              <div
-                key={ex.id}
-                className="planeBoom"
-                style={{ left: `${ex.x}%`, top: `${ex.y}%` }}
-              >
-                {ex.text}
-              </div>
-            ))}
-
-            {/* Player Fighter Jet */}
-            <div className="playerShip" style={{ left: `${shipX}%` }} aria-hidden="true">
-              <IconPlane size={28} style={{ transform: 'rotate(-45deg)' }} />
-            </div>
-          </div>
-
-          {/* Typing Mode Cannon Input */}
-          {phase === 'playing' && subMode === 'typing' && (
-            <form className="planeTypeBar" onSubmit={handleTypingSubmit}>
-              <input
-                ref={inputRef}
-                value={typed}
-                onChange={(e) => setTyped(e.target.value)}
-                placeholder="Gõ từ tiếng Anh khớp với máy bay rồi nhấn Enter để bắn..."
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-              />
-              <button type="submit" className="primary">
-                Bắn!
-              </button>
-            </form>
-          )}
         </div>
 
-        {/* Leaderboard Sidebar */}
         <aside className="planeBoardCard">
           <h3 className="planeBoardTitle">Bảng xếp hạng</h3>
           <p className="planeBoardSub">
@@ -685,7 +559,7 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
                     <b>{row.displayName || 'Người chơi'}</b>
                     <span>
                       Wave {row.wave} · {row.wordsCleared} từ ·{' '}
-                      {row.subMode === 'typing' ? 'Gõ từ' : 'Chạm bắn'}
+                      {row.subMode === 'typing' ? 'Gõ chữ' : 'Chạm bắn'}
                     </span>
                   </div>
                   <b className="rankScore">{row.score}</b>
@@ -695,6 +569,210 @@ export default function PlaneShooterGame({ cards, isGuest, onSpeak, onToast }: P
           )}
         </aside>
       </div>
+
+      {/* ==================== FULL-SCREEN GAME STAGE ==================== */}
+      {phase !== 'idle' && (
+        <div className="gameFullscreen">
+          {/* Dedicated Wide Game Header */}
+          <header className="gameFsHeader dark">
+            <div className="gameFsLeft">
+              <span className="gameFsIcon">
+                <IconPlane size={19} />
+              </span>
+              <div>
+                <div className="gameFsTitle">Bắn máy bay từ vựng</div>
+                <div className="gameFsSub">
+                  {subMode === 'typing' ? 'Chế độ Gõ chữ ZType' : 'Chế độ Chạm bắn'}
+                </div>
+              </div>
+            </div>
+
+            <div className="gameFsHudCenter">
+              <div className="planeHudStat">
+                <span>ĐIỂM</span>
+                <b>{score}</b>
+              </div>
+              <div className="planeHudStat">
+                <span>WAVE</span>
+                <b>{wave}</b>
+              </div>
+              <div className="planeHudStat">
+                <span>COMBO</span>
+                <b>×{combo}</b>
+              </div>
+              <div className="planeHudLives" aria-label={`Còn ${lives} mạng`}>
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className={`lifeDot ${i < lives ? 'on' : ''}`} />
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="gameFsExitBtn"
+              onClick={requestExit}
+            >
+              <IconX size={16} />
+              <span>Thoát trò chơi</span>
+            </button>
+          </header>
+
+          {/* Target Prompt Banner for Tap Mode */}
+          {phase === 'playing' && subMode === 'tap' && targetCard && (
+            <div className="planeTargetBanner">
+              <span className="planeTargetLabel">BẮN NGHĨA ĐÚNG CỦA TỪ:</span>
+              <b className="planeTargetWord">{capFirst(targetCard.word)}</b>
+              <button
+                type="button"
+                className="planeSpeakMini"
+                onClick={() => onSpeak(cleanTargetWord(targetCard.word), false)}
+                title="Nghe lại"
+              >
+                <IconVolume size={16} />
+              </button>
+            </div>
+          )}
+
+          {/* Full-Height Radar Sky */}
+          <div className="planeSky fsSky">
+            <div className="planeRadarGrid" aria-hidden="true" />
+
+            {phase === 'over' && (
+              <div className="planeOverlay">
+                {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
+                <h3>Trận chiến kết thúc</h3>
+                <div className="planeOverScore">{score} điểm</div>
+                <p>
+                  Hạ <b>{wordsCleared}</b> máy bay · Wave <b>{wave}</b> · Combo cao nhất{' '}
+                  <b>×{maxCombo}</b>
+                </p>
+                <div className="gameOverBtns">
+                  <button type="button" className="soft" onClick={confirmQuitGame}>
+                    Về trung tâm trò chơi
+                  </button>
+                  <button type="button" className="primary btnIconText" onClick={startGame}>
+                    <IconRotateCcw size={16} />
+                    <span>Chơi lại ngay</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Enemy Planes */}
+            {phase === 'playing' &&
+              enemies.map((en) => {
+                const wLower = en.targetWord.toLowerCase();
+                const isPrefixMatch =
+                  subMode === 'typing' && typedLower.length > 0 && wLower.startsWith(typedLower);
+                const matchedPart = isPrefixMatch ? en.targetWord.slice(0, typedLower.length) : '';
+                const restPart = isPrefixMatch ? en.targetWord.slice(typedLower.length) : en.targetWord;
+
+                return (
+                  <button
+                    key={en.uid}
+                    type="button"
+                    className={`enemyPlane fsEnemy ${subMode === 'tap' ? 'clickable' : ''} ${
+                      isPrefixMatch ? 'locked' : ''
+                    }`}
+                    style={{ left: `${en.x}%`, top: `${en.y}%` }}
+                    onClick={() => handlePlaneClick(en)}
+                  >
+                    <span className="enemyPlaneBody">
+                      <IconPlane size={22} style={{ transform: 'rotate(135deg)' }} />
+                    </span>
+                    <span className="enemyPlaneTag">
+                      {subMode === 'typing' ? (
+                        <>
+                          <span className="enemyEnWord">
+                            {matchedPart && <mark className="typedHit">{matchedPart}</mark>}
+                            {restPart}
+                          </span>
+                          <span className="enemyViSub">{en.label}</span>
+                        </>
+                      ) : (
+                        <b>{en.label}</b>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+
+            {lasers.map((l) => (
+              <div
+                key={l.id}
+                className="planeLaser"
+                style={{
+                  left: `${l.toX}%`,
+                  top: `${l.toY}%`,
+                  height: `${Math.max(8, 92 - l.toY)}%`,
+                }}
+              />
+            ))}
+
+            {explosions.map((ex) => (
+              <div
+                key={ex.id}
+                className="planeBoom"
+                style={{ left: `${ex.x}%`, top: `${ex.y}%` }}
+              >
+                {ex.text}
+              </div>
+            ))}
+
+            <div className="playerShip" style={{ left: `${shipX}%` }} aria-hidden="true">
+              <IconPlane size={30} style={{ transform: 'rotate(-45deg)' }} />
+            </div>
+          </div>
+
+          {/* Typing Mode Cannon Input */}
+          {phase === 'playing' && subMode === 'typing' && (
+            <form className="planeTypeBar fsTypeBar" onSubmit={handleTypingSubmit}>
+              <input
+                ref={inputRef}
+                value={typed}
+                onChange={(e) => handleTypingChange(e.target.value)}
+                placeholder="Gõ từ tiếng Anh hiện trên máy bay — gõ đúng hết là tự động bắn!"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+              <button type="submit" className="primary">
+                Bắn!
+              </button>
+            </form>
+          )}
+
+          {/* Exit Confirmation Modal */}
+          {confirmExit && (
+            <div className="gameConfirmBackdrop">
+              <div className="gameConfirmBox">
+                <h3>Thoát ván chơi hiện tại?</h3>
+                <p>
+                  Trò chơi đang tạm dừng. Nếu thoát ngay bây giờ, điểm số của ván này sẽ không được
+                  lưu lại.
+                </p>
+                <div className="gameConfirmBtns">
+                  <button
+                    type="button"
+                    className="soft"
+                    onClick={() => {
+                      setConfirmExit(false);
+                      lastTickRef.current = performance.now();
+                      setTimeout(() => inputRef.current?.focus(), 40);
+                    }}
+                  >
+                    Tiếp tục chơi
+                  </button>
+                  <button type="button" className="danger" onClick={confirmQuitGame}>
+                    Xác nhận thoát
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

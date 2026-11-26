@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst } from '@/lib/pos';
 import type { CardItem } from './FlashcardApp';
-import { IconLightbulb, IconRotateCcw, IconShuffle, IconType, IconVolume } from './Icons';
+import { IconLightbulb, IconRotateCcw, IconShuffle, IconType, IconVolume, IconX } from './Icons';
 
 interface ScoreEntry {
   id: string;
@@ -52,6 +52,7 @@ function scrambleLetters(word: string): string[] {
 export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: Props) {
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'over'>('idle');
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS);
   const [score, setScore] = useState(0);
@@ -76,7 +77,6 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
   const maxComboRef = useRef(0);
   const savedRef = useRef(false);
 
-  // Pick clean single alphabetic words (3..12 letters) for fun scrambling
   const pool = useMemo(() => {
     const filtered = cards.filter((c) => {
       const okMode =
@@ -201,6 +201,7 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
     setMaxCombo(0);
     setSolvedCount(0);
     setIsNewRecord(false);
+    setConfirmExit(false);
     scoreRef.current = 0;
     solvedRef.current = 0;
     maxComboRef.current = 0;
@@ -210,7 +211,7 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
   };
 
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || confirmExit) return;
     const t = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -223,7 +224,7 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [phase, saveScore]);
+  }, [phase, confirmExit, saveScore]);
 
   const checkCompleted = useCallback(
     (nextPicked: { id: number; ch: string }[]) => {
@@ -242,7 +243,7 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
         setCombo(nextCombo);
         setMaxCombo(nextMax);
         onSpeak(target, false);
-        setTimeout(() => loadNextWord(), 280);
+        setTimeout(() => loadNextWord(), 260);
       } else {
         setShake(true);
         setCombo(0);
@@ -281,14 +282,11 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
     if (nextIdx >= target.length) return;
     const neededChar = target[nextIdx];
     const matchTile = bank.find((b) => !b.used && b.ch === neededChar);
-    if (matchTile) {
-      pickBankTile(matchTile.id);
-    }
+    if (matchTile) pickBankTile(matchTile.id);
   };
 
-  // Allow fast keyboard typing on Desktop!
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || confirmExit) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const tag = document.activeElement?.tagName;
@@ -309,7 +307,15 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, bank, pickBankTile, unpickLast]);
+  }, [phase, confirmExit, bank, pickBankTile, unpickLast]);
+
+  const requestExit = () => {
+    if (phase === 'playing') setConfirmExit(true);
+    else {
+      setPhase('idle');
+      setConfirmExit(false);
+    }
+  };
 
   return (
     <div className="planeGameWrap">
@@ -328,7 +334,6 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
                 key={k}
                 type="button"
                 className={`segBtn ${poolMode === k ? 'active' : ''}`}
-                disabled={phase === 'playing'}
                 onClick={() => setPoolMode(k)}
               >
                 {label}
@@ -346,135 +351,19 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
 
       <div className="planeLayout">
         <div className="matchBoardCard">
-          <div className="matchHud">
-            <div className="matchHudItem">
-              <span>ĐIỂM</span>
-              <b>{score}</b>
+          <div className="gameStartBox">
+            <div className="planeHeroIcon">
+              <IconType size={34} />
             </div>
-            <div className="matchHudItem">
-              <span>CÒN LẠI</span>
-              <b style={{ color: timeLeft <= 10 && phase === 'playing' ? 'var(--rust)' : undefined }}>
-                {timeLeft}s
-              </b>
-            </div>
-            <div className="matchHudItem">
-              <span>ĐÃ XẾP</span>
-              <b>{solvedCount}</b>
-            </div>
-            <div className="matchHudItem">
-              <span>COMBO</span>
-              <b>×{combo}</b>
-            </div>
+            <h3>Xếp chữ siêu tốc (60 giây)</h3>
+            <p>
+              Dựa vào nghĩa tiếng Việt, bấm các ô chữ cái hoặc gõ trực tiếp trên bàn phím để xếp
+              lại đúng từ tiếng Anh trong 60 giây!
+            </p>
+            <button type="button" className="primary gameBigStartBtn" onClick={startGame}>
+              Vào sân chơi toàn màn hình →
+            </button>
           </div>
-
-          {phase === 'idle' && (
-            <div className="gameStartBox">
-              <div className="planeHeroIcon">
-                <IconType size={32} />
-              </div>
-              <h3>Xếp chữ siêu tốc (60 giây)</h3>
-              <p>
-                Dựa vào nghĩa tiếng Việt, bấm các ô chữ cái (hoặc gõ trực tiếp trên bàn phím) để
-                xếp lại đúng từ tiếng Anh trong 60 giây!
-              </p>
-              <button type="button" className="primary" onClick={startGame}>
-                Bắt đầu 60 giây
-              </button>
-            </div>
-          )}
-
-          {phase === 'playing' && currentCard && (
-            <div className="scrambleStage">
-              <div className="scramblePrompt">
-                <span className="scrambleLabel">NGHĨA TIẾNG VIỆT</span>
-                <div className="scrambleVi">
-                  {currentCard.meanings.map((m) => capFirst(m.text)).join(' · ')}
-                </div>
-              </div>
-
-              {/* Answer slots */}
-              <div className={`scrambleSlots ${shake ? 'shake' : ''}`}>
-                {target.split('').map((_, idx) => {
-                  const item = picked[idx];
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      className={`scrambleSlot ${item ? 'filled' : ''}`}
-                      onClick={() => {
-                        if (item && idx === picked.length - 1) unpickLast();
-                      }}
-                    >
-                      {item ? item.ch.toUpperCase() : ''}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Letter bank */}
-              <div className="scrambleBank">
-                {bank.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    disabled={b.used}
-                    className={`scrambleKey ${b.used ? 'used' : ''}`}
-                    onClick={() => pickBankTile(b.id)}
-                  >
-                    {b.ch.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-
-              <div className="scrambleTools">
-                <button
-                  type="button"
-                  className="ghost small btnIconText"
-                  onClick={() => onSpeak(target, false)}
-                >
-                  <IconVolume size={15} />
-                  <span>Nghe gợi ý</span>
-                </button>
-                <button type="button" className="ghost small btnIconText" onClick={useHint}>
-                  <IconLightbulb size={15} />
-                  <span>Mở 1 chữ</span>
-                </button>
-                <button
-                  type="button"
-                  className="ghost small btnIconText"
-                  onClick={() => setBank((prev) => shuffleArray(prev))}
-                >
-                  <IconShuffle size={15} />
-                  <span>Xáo lại</span>
-                </button>
-                <button
-                  type="button"
-                  className="soft small"
-                  onClick={() => {
-                    setCombo(0);
-                    loadNextWord();
-                  }}
-                >
-                  Bỏ qua →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {phase === 'over' && (
-            <div className="gameStartBox">
-              {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
-              <h3>Hết giờ!</h3>
-              <div className="matchFinalScore">{score} điểm</div>
-              <p>
-                Xếp đúng <b>{solvedCount}</b> từ · Combo cao nhất <b>×{maxCombo}</b>
-              </p>
-              <button type="button" className="primary btnIconText" onClick={startGame}>
-                <IconRotateCcw size={16} />
-                <span>Chơi lại 60 giây</span>
-              </button>
-            </div>
-          )}
         </div>
 
         <aside className="planeBoardCard">
@@ -502,6 +391,171 @@ export default function WordScrambleGame({ cards, isGuest, onSpeak, onToast }: P
           )}
         </aside>
       </div>
+
+      {/* ==================== FULL-SCREEN GAME STAGE ==================== */}
+      {phase !== 'idle' && (
+        <div className="gameFullscreen lightStage">
+          <header className="gameFsHeader">
+            <div className="gameFsLeft">
+              <span className="gameFsIcon">
+                <IconType size={19} />
+              </span>
+              <div>
+                <div className="gameFsTitle">Xếp chữ siêu tốc</div>
+                <div className="gameFsSub">Thử thách 60 giây</div>
+              </div>
+            </div>
+
+            <div className="gameFsHudCenter">
+              <div className="matchHudItem">
+                <span>ĐIỂM</span>
+                <b>{score}</b>
+              </div>
+              <div className="matchHudItem">
+                <span>CÒN LẠI</span>
+                <b style={{ color: timeLeft <= 10 && phase === 'playing' ? 'var(--rust)' : undefined }}>
+                  {timeLeft}s
+                </b>
+              </div>
+              <div className="matchHudItem">
+                <span>ĐÃ XẾP</span>
+                <b>{solvedCount}</b>
+              </div>
+              <div className="matchHudItem">
+                <span>COMBO</span>
+                <b>×{combo}</b>
+              </div>
+            </div>
+
+            <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
+              <IconX size={16} />
+              <span>Thoát trò chơi</span>
+            </button>
+          </header>
+
+          <div className="gameFsBody">
+            {phase === 'playing' && currentCard && (
+              <div className="scrambleStage fsScrambleStage">
+                <div className="scramblePrompt">
+                  <span className="scrambleLabel">NGHĨA TIẾNG VIỆT</span>
+                  <div className="scrambleVi fsScrambleVi">
+                    {currentCard.meanings.map((m) => capFirst(m.text)).join(' · ')}
+                  </div>
+                </div>
+
+                <div className={`scrambleSlots ${shake ? 'shake' : ''}`}>
+                  {target.split('').map((_, idx) => {
+                    const item = picked[idx];
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={`scrambleSlot fsSlot ${item ? 'filled' : ''}`}
+                        onClick={() => {
+                          if (item && idx === picked.length - 1) unpickLast();
+                        }}
+                      >
+                        {item ? item.ch.toUpperCase() : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="scrambleBank">
+                  {bank.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      disabled={b.used}
+                      className={`scrambleKey fsKey ${b.used ? 'used' : ''}`}
+                      onClick={() => pickBankTile(b.id)}
+                    >
+                      {b.ch.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="scrambleTools">
+                  <button
+                    type="button"
+                    className="ghost btnIconText"
+                    onClick={() => onSpeak(target, false)}
+                  >
+                    <IconVolume size={16} />
+                    <span>Nghe gợi ý</span>
+                  </button>
+                  <button type="button" className="ghost btnIconText" onClick={useHint}>
+                    <IconLightbulb size={16} />
+                    <span>Mở 1 chữ</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost btnIconText"
+                    onClick={() => setBank((prev) => shuffleArray(prev))}
+                  >
+                    <IconShuffle size={16} />
+                    <span>Xáo lại</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="soft"
+                    onClick={() => {
+                      setCombo(0);
+                      loadNextWord();
+                    }}
+                  >
+                    Bỏ qua →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {phase === 'over' && (
+              <div className="gameStartBox">
+                {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
+                <h3>Hết giờ!</h3>
+                <div className="matchFinalScore">{score} điểm</div>
+                <p>
+                  Xếp đúng <b>{solvedCount}</b> từ · Combo cao nhất <b>×{maxCombo}</b>
+                </p>
+                <div className="gameOverBtns">
+                  <button type="button" className="soft" onClick={() => setPhase('idle')}>
+                    Về trung tâm trò chơi
+                  </button>
+                  <button type="button" className="primary btnIconText" onClick={startGame}>
+                    <IconRotateCcw size={16} />
+                    <span>Chơi lại 60 giây</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {confirmExit && (
+            <div className="gameConfirmBackdrop">
+              <div className="gameConfirmBox">
+                <h3>Thoát ván Xếp chữ?</h3>
+                <p>Đồng hồ 60 giây đang tạm dừng. Nếu thoát ngay, điểm lượt này sẽ không được lưu.</p>
+                <div className="gameConfirmBtns">
+                  <button type="button" className="soft" onClick={() => setConfirmExit(false)}>
+                    Tiếp tục chơi
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => {
+                      setConfirmExit(false);
+                      setPhase('idle');
+                    }}
+                  >
+                    Xác nhận thoát
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

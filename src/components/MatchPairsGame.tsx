@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { capFirst } from '@/lib/pos';
 import type { CardItem } from './FlashcardApp';
-import { IconGrid, IconRotateCcw } from './Icons';
+import { IconGrid, IconRotateCcw, IconX } from './Icons';
 
 interface TileItem {
   uid: string;
@@ -46,6 +46,7 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
   const [pairCount, setPairCount] = useState<6 | 8>(6);
   const [poolMode, setPoolMode] = useState<'unlearned' | 'all' | 'learned'>('unlearned');
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const [tiles, setTiles] = useState<TileItem[]>([]);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
@@ -105,12 +106,12 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
   }, [loadScores]);
 
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || confirmExit) return;
     const t = setInterval(() => {
-      setElapsedMs(Date.now() - startRef.current);
+      setElapsedMs((prev) => prev + 100);
     }, 100);
     return () => clearInterval(t);
-  }, [phase]);
+  }, [phase, confirmExit]);
 
   const saveResult = useCallback(
     async (finalScore: number, cleared: number, bestCombo: number, durationSec: number) => {
@@ -201,12 +202,13 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
     setMistakes(0);
     setElapsedMs(0);
     setIsNewRecord(false);
+    setConfirmExit(false);
     startRef.current = Date.now();
     setPhase('playing');
   };
 
   const handlePick = (tile: TileItem) => {
-    if (phase !== 'playing' || tile.matched || wrongPair.length > 0) return;
+    if (phase !== 'playing' || confirmExit || tile.matched || wrongPair.length > 0) return;
 
     if (tile.kind === 'en') {
       onSpeak(tile.speakText, false);
@@ -229,7 +231,6 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
     }
 
     if (first.cardId === tile.cardId && first.kind !== tile.kind) {
-      // Matched pair!
       const nextCombo = combo + 1;
       const nextMax = Math.max(maxCombo, nextCombo);
       const pts = 120 + nextCombo * 25;
@@ -245,22 +246,28 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
       setScore(nextScore);
 
       if (updated.every((t) => t.matched)) {
-        const sec = Math.max(1, Math.round((Date.now() - startRef.current) / 1000));
+        const sec = Math.max(1, Math.round(elapsedMs / 1000));
         const speedBonus = Math.max(0, (pairCount * 10 - sec) * 15);
         const totalFinal = nextScore + speedBonus;
         setScore(totalFinal);
-        setElapsedMs(Date.now() - startRef.current);
         setPhase('done');
         saveResult(totalFinal, pairCount, nextMax, sec);
       }
     } else {
-      // Wrong pair
       setWrongPair([first.uid, tile.uid]);
       setSelectedUid(null);
       setCombo(0);
       setMistakes((m) => m + 1);
       setScore((s) => Math.max(0, s - 20));
       setTimeout(() => setWrongPair([]), 420);
+    }
+  };
+
+  const requestExit = () => {
+    if (phase === 'playing') setConfirmExit(true);
+    else {
+      setPhase('idle');
+      setConfirmExit(false);
     }
   };
 
@@ -275,7 +282,6 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
                 key={n}
                 type="button"
                 className={`segBtn ${pairCount === n ? 'active' : ''}`}
-                disabled={phase === 'playing'}
                 onClick={() => setPairCount(n)}
               >
                 {n} cặp ({n * 2} thẻ)
@@ -298,7 +304,6 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
                 key={k}
                 type="button"
                 className={`segBtn ${poolMode === k ? 'active' : ''}`}
-                disabled={phase === 'playing'}
                 onClick={() => setPoolMode(k)}
               >
                 {label}
@@ -316,79 +321,19 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
 
       <div className="planeLayout">
         <div className="matchBoardCard">
-          <div className="matchHud">
-            <div className="matchHudItem">
-              <span>ĐIỂM</span>
-              <b>{score}</b>
+          <div className="gameStartBox">
+            <div className="planeHeroIcon">
+              <IconGrid size={34} />
             </div>
-            <div className="matchHudItem">
-              <span>THỜI GIAN</span>
-              <b>{(elapsedMs / 1000).toFixed(1)}s</b>
-            </div>
-            <div className="matchHudItem">
-              <span>COMBO</span>
-              <b>×{combo}</b>
-            </div>
-            <div className="matchHudItem">
-              <span>SAI</span>
-              <b>{mistakes}</b>
-            </div>
+            <h3>Ghép cặp tốc độ (Match Pairs)</h3>
+            <p>
+              Chạm 1 thẻ tiếng Anh và 1 thẻ nghĩa tiếng Việt tương ứng để ghép đôi thật nhanh. Càng
+              nhanh và ít sai, điểm thưởng tốc độ càng cao!
+            </p>
+            <button type="button" className="primary gameBigStartBtn" onClick={startGame}>
+              Vào sân chơi toàn màn hình →
+            </button>
           </div>
-
-          {phase === 'idle' && (
-            <div className="gameStartBox">
-              <div className="planeHeroIcon">
-                <IconGrid size={32} />
-              </div>
-              <h3>Ghép cặp tốc độ (Match Pairs)</h3>
-              <p>
-                Chạm 1 thẻ tiếng Anh và 1 thẻ nghĩa tiếng Việt tương ứng để ghép đôi thật nhanh.
-                Càng nhanh và ít sai, điểm thưởng tốc độ càng cao!
-              </p>
-              <button type="button" className="primary" onClick={startGame}>
-                Bắt đầu ghép cặp
-              </button>
-            </div>
-          )}
-
-          {phase === 'playing' && (
-            <div className={`matchGrid ${pairCount === 8 ? 'grid16' : 'grid12'}`}>
-              {tiles.map((t) => {
-                const isSel = selectedUid === t.uid;
-                const isWrong = wrongPair.includes(t.uid);
-                return (
-                  <button
-                    key={t.uid}
-                    type="button"
-                    disabled={t.matched}
-                    className={`matchTile ${t.kind} ${isSel ? 'selected' : ''} ${
-                      isWrong ? 'wrong' : ''
-                    } ${t.matched ? 'matched' : ''}`}
-                    onClick={() => handlePick(t)}
-                  >
-                    <span className="matchTileKind">{t.kind === 'en' ? 'EN' : 'VI'}</span>
-                    <span className="matchTileText">{t.text}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {phase === 'done' && (
-            <div className="gameStartBox">
-              {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
-              <h3>Hoàn thành xuất sắc!</h3>
-              <div className="matchFinalScore">{score} điểm</div>
-              <p>
-                Thời gian <b>{(elapsedMs / 1000).toFixed(1)}s</b> · Combo cao nhất{' '}
-                <b>×{maxCombo}</b> · Sai <b>{mistakes}</b> lần
-              </p>
-              <button type="button" className="primary btnIconText" onClick={startGame}>
-                <IconRotateCcw size={16} />
-                <span>Chơi lượt mới</span>
-              </button>
-            </div>
-          )}
         </div>
 
         <aside className="planeBoardCard">
@@ -416,6 +361,117 @@ export default function MatchPairsGame({ cards, isGuest, onSpeak, onToast }: Pro
           )}
         </aside>
       </div>
+
+      {/* ==================== FULL-SCREEN GAME STAGE ==================== */}
+      {phase !== 'idle' && (
+        <div className="gameFullscreen lightStage">
+          <header className="gameFsHeader">
+            <div className="gameFsLeft">
+              <span className="gameFsIcon">
+                <IconGrid size={19} />
+              </span>
+              <div>
+                <div className="gameFsTitle">Ghép cặp tốc độ</div>
+                <div className="gameFsSub">{pairCount} cặp ({pairCount * 2} thẻ)</div>
+              </div>
+            </div>
+
+            <div className="gameFsHudCenter">
+              <div className="matchHudItem">
+                <span>ĐIỂM</span>
+                <b>{score}</b>
+              </div>
+              <div className="matchHudItem">
+                <span>THỜI GIAN</span>
+                <b>{(elapsedMs / 1000).toFixed(1)}s</b>
+              </div>
+              <div className="matchHudItem">
+                <span>COMBO</span>
+                <b>×{combo}</b>
+              </div>
+              <div className="matchHudItem">
+                <span>SAI</span>
+                <b>{mistakes}</b>
+              </div>
+            </div>
+
+            <button type="button" className="gameFsExitBtn light" onClick={requestExit}>
+              <IconX size={16} />
+              <span>Thoát trò chơi</span>
+            </button>
+          </header>
+
+          <div className="gameFsBody">
+            {phase === 'playing' && (
+              <div className={`matchGrid fsMatchGrid ${pairCount === 8 ? 'grid16' : 'grid12'}`}>
+                {tiles.map((t) => {
+                  const isSel = selectedUid === t.uid;
+                  const isWrong = wrongPair.includes(t.uid);
+                  return (
+                    <button
+                      key={t.uid}
+                      type="button"
+                      disabled={t.matched}
+                      className={`matchTile fsMatchTile ${t.kind} ${isSel ? 'selected' : ''} ${
+                        isWrong ? 'wrong' : ''
+                      } ${t.matched ? 'matched' : ''}`}
+                      onClick={() => handlePick(t)}
+                    >
+                      <span className="matchTileKind">{t.kind === 'en' ? 'EN' : 'VI'}</span>
+                      <span className="matchTileText">{t.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {phase === 'done' && (
+              <div className="gameStartBox">
+                {isNewRecord && <span className="newRecordTag">KỶ LỤC MỚI!</span>}
+                <h3>Hoàn thành xuất sắc!</h3>
+                <div className="matchFinalScore">{score} điểm</div>
+                <p>
+                  Thời gian <b>{(elapsedMs / 1000).toFixed(1)}s</b> · Combo cao nhất{' '}
+                  <b>×{maxCombo}</b> · Sai <b>{mistakes}</b> lần
+                </p>
+                <div className="gameOverBtns">
+                  <button type="button" className="soft" onClick={() => setPhase('idle')}>
+                    Về trung tâm trò chơi
+                  </button>
+                  <button type="button" className="primary btnIconText" onClick={startGame}>
+                    <IconRotateCcw size={16} />
+                    <span>Chơi lượt mới</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {confirmExit && (
+            <div className="gameConfirmBackdrop">
+              <div className="gameConfirmBox">
+                <h3>Thoát ván Ghép cặp?</h3>
+                <p>Đồng hồ đang tạm dừng. Nếu thoát bây giờ, kết quả lượt này sẽ không được lưu.</p>
+                <div className="gameConfirmBtns">
+                  <button type="button" className="soft" onClick={() => setConfirmExit(false)}>
+                    Tiếp tục chơi
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => {
+                      setConfirmExit(false);
+                      setPhase('idle');
+                    }}
+                  >
+                    Xác nhận thoát
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
