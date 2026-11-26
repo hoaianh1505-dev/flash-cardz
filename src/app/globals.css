@@ -5012,7 +5012,21 @@ body {
   overflow-x: hidden;
 }
 
-.authShell,
+.authShell {
+  min-width: 0;
+  width: 100%;
+  max-width: 940px;
+  min-height: 580px;
+}
+
+.authHero {
+  padding: 40px 38px;
+}
+
+.authPanel {
+  padding: 40px 38px;
+}
+
 .authHero,
 .authPanel,
 .authForm,
