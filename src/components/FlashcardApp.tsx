@@ -2511,90 +2511,121 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           {/* ==================== TAB: TRÒ CHƠI (GAME HUB) ==================== */}
           {activeTab === 'games' && (
             <div className="innerPageWrap">
-              <div className="practiceHeader">
-                <div>
-                  <h2 className="pageTitle">Trung tâm trò chơi từ vựng</h2>
-                  <p className="pageSub">
-                    Vừa chơi vừa nhớ từ nhanh hơn · Điểm kỷ lục &amp; bảng xếp hạng lưu tự động.
-                  </p>
+              {/* Mobile-only notice: Games are desktop-web only */}
+              <div className="gamesMobileNotice">
+                <div className="planeHeroIcon">
+                  <IconGamepad size={34} />
                 </div>
-
-                <div className="practiceModeSwitch" role="tablist" aria-label="Chọn trò chơi">
+                <h3>Trò chơi chỉ áp dụng trên máy tính</h3>
+                <p>
+                  Trung tâm trò chơi từ vựng (Bắn máy bay, Ghép cặp tốc độ, Xếp chữ 60 giây) chỉ
+                  hỗ trợ trên phiên bản website máy tính để có trải nghiệm tốt nhất.
+                </p>
+                <div className="gamesMobileNoticeBtns">
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={activeGame === 'plane-shooter'}
-                    className={`practiceModeBtn ${activeGame === 'plane-shooter' ? 'active' : ''}`}
-                    onClick={() => {
-                      stopSpeech();
-                      setActiveGame('plane-shooter');
-                    }}
+                    className="primary"
+                    onClick={() => switchTab('practice')}
                   >
-                    <IconPlane size={18} />
-                    <div>
-                      <b>Bắn máy bay</b>
-                      <span>Chạm bắn &amp; gõ từ</span>
-                    </div>
+                    Sang Luyện tập
                   </button>
                   <button
                     type="button"
-                    role="tab"
-                    aria-selected={activeGame === 'match-pairs'}
-                    className={`practiceModeBtn ${activeGame === 'match-pairs' ? 'active' : ''}`}
-                    onClick={() => {
-                      stopSpeech();
-                      setActiveGame('match-pairs');
-                    }}
+                    className="soft"
+                    onClick={() => switchTab('study')}
                   >
-                    <IconGrid size={18} />
-                    <div>
-                      <b>Ghép cặp tốc độ</b>
-                      <span>Nối 6–8 cặp Anh–Việt</span>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeGame === 'word-scramble'}
-                    className={`practiceModeBtn ${activeGame === 'word-scramble' ? 'active' : ''}`}
-                    onClick={() => {
-                      stopSpeech();
-                      setActiveGame('word-scramble');
-                    }}
-                  >
-                    <IconType size={18} />
-                    <div>
-                      <b>Xếp chữ 60 giây</b>
-                      <span>Ghép chữ cái siêu tốc</span>
-                    </div>
+                    Về Học thẻ
                   </button>
                 </div>
               </div>
 
-              {activeGame === 'plane-shooter' && (
-                <PlaneShooterGame
-                  cards={cards}
-                  isGuest={isGuest}
-                  onSpeak={speak}
-                  onToast={showToast}
-                />
-              )}
-              {activeGame === 'match-pairs' && (
-                <MatchPairsGame
-                  cards={cards}
-                  isGuest={isGuest}
-                  onSpeak={speak}
-                  onToast={showToast}
-                />
-              )}
-              {activeGame === 'word-scramble' && (
-                <WordScrambleGame
-                  cards={cards}
-                  isGuest={isGuest}
-                  onSpeak={speak}
-                  onToast={showToast}
-                />
-              )}
+              {/* Desktop Game Hub */}
+              <div className="gamesDesktopOnly">
+                <div className="practiceHeader">
+                  <div>
+                    <h2 className="pageTitle">Trung tâm trò chơi từ vựng</h2>
+                    <p className="pageSub">
+                      Vừa chơi vừa nhớ từ nhanh hơn · Điểm kỷ lục &amp; bảng xếp hạng lưu tự động.
+                    </p>
+                  </div>
+
+                  <div className="practiceModeSwitch" role="tablist" aria-label="Chọn trò chơi">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeGame === 'plane-shooter'}
+                      className={`practiceModeBtn ${activeGame === 'plane-shooter' ? 'active' : ''}`}
+                      onClick={() => {
+                        stopSpeech();
+                        setActiveGame('plane-shooter');
+                      }}
+                    >
+                      <IconPlane size={18} />
+                      <div>
+                        <b>Bắn máy bay</b>
+                        <span>Chạm bắn &amp; gõ từ</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeGame === 'match-pairs'}
+                      className={`practiceModeBtn ${activeGame === 'match-pairs' ? 'active' : ''}`}
+                      onClick={() => {
+                        stopSpeech();
+                        setActiveGame('match-pairs');
+                      }}
+                    >
+                      <IconGrid size={18} />
+                      <div>
+                        <b>Ghép cặp tốc độ</b>
+                        <span>Nối 6–8 cặp Anh–Việt</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeGame === 'word-scramble'}
+                      className={`practiceModeBtn ${activeGame === 'word-scramble' ? 'active' : ''}`}
+                      onClick={() => {
+                        stopSpeech();
+                        setActiveGame('word-scramble');
+                      }}
+                    >
+                      <IconType size={18} />
+                      <div>
+                        <b>Xếp chữ 60 giây</b>
+                        <span>Ghép chữ cái siêu tốc</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {activeGame === 'plane-shooter' && (
+                  <PlaneShooterGame
+                    cards={cards}
+                    isGuest={isGuest}
+                    onSpeak={speak}
+                    onToast={showToast}
+                  />
+                )}
+                {activeGame === 'match-pairs' && (
+                  <MatchPairsGame
+                    cards={cards}
+                    isGuest={isGuest}
+                    onSpeak={speak}
+                    onToast={showToast}
+                  />
+                )}
+                {activeGame === 'word-scramble' && (
+                  <WordScrambleGame
+                    cards={cards}
+                    isGuest={isGuest}
+                    onSpeak={speak}
+                    onToast={showToast}
+                  />
+                )}
+              </div>
             </div>
           )}
 

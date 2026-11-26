@@ -5844,3 +5844,53 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* Desktop-only Games Hub notice on mobile screens (<= 860px) */
+.gamesMobileNotice {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .gamesDesktopOnly {
+    display: none;
+  }
+  .gamesMobileNotice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+    background: var(--card-bg);
+    border: 1.5px solid var(--line-soft);
+    border-radius: 18px;
+    padding: 36px 22px;
+    margin-top: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+  .gamesMobileNotice h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 800;
+  }
+  .gamesMobileNotice p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 38ch;
+  }
+  .gamesMobileNoticeBtns {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    width: 100%;
+    max-width: 320px;
+  }
+  .gamesMobileNoticeBtns button {
+    flex: 1;
+    padding: 11px 14px;
+    font-size: 14px;
+  }
+}
