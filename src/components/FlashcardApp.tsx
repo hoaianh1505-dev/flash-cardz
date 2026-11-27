@@ -2256,14 +2256,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           {/* ==================== TAB 2: LUYỆN TẬP ==================== */}
           {activeTab === 'practice' && (
             <div className="innerPageWrap">
-              <div className="practiceHeader">
-                <div>
-                  <h2 className="pageTitle">Luyện tập phản xạ</h2>
-                  <p className="pageSub">
-                    Kết quả mỗi lượt luyện tập được tự động lưu vào mục Thống kê.
-                  </p>
-                </div>
-
+              <div className="practiceHeader" style={{ marginBottom: 14 }}>
                 <div className="practiceModeSwitch" role="tablist">
                   <button
                     type="button"
@@ -2524,16 +2517,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           {/* ==================== TAB: PHÁT ÂM (MICRO SHADOWING) ==================== */}
           {activeTab === 'speaking' && (
             <div className="innerPageWrap">
-              <div className="practiceHeader">
-                <div>
-                  <h2 className="pageTitle">Luyện phát âm (Shadowing)</h2>
-                  <p className="pageSub">
-                    Nghe phát âm mẫu rồi đọc to từ tiếng Anh vào Micro — hệ thống tự nhận diện và
-                    chấm điểm độ chuẩn ngay trên trình duyệt.
-                  </p>
-                </div>
-              </div>
-
               <PronunciationPractice
                 cards={cards}
                 isSpeaking={isSpeaking}
@@ -2579,14 +2562,7 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
 
               {/* Desktop Game Hub */}
               <div className="gamesDesktopOnly">
-                <div className="practiceHeader">
-                  <div>
-                    <h2 className="pageTitle">Trung tâm trò chơi từ vựng</h2>
-                    <p className="pageSub">
-                      Vừa chơi vừa nhớ từ nhanh hơn · Điểm kỷ lục &amp; bảng xếp hạng lưu tự động.
-                    </p>
-                  </div>
-
+                <div className="practiceHeader" style={{ marginBottom: 14 }}>
                   <div className="practiceModeSwitch" role="tablist" aria-label="Chọn trò chơi">
                     <button
                       type="button"

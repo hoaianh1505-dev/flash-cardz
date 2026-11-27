@@ -102,66 +102,55 @@ export default function IrregularView({ onSpeak }: Props) {
 
   return (
     <section className="pagePanel">
-      <div className="pagePanelHead" style={{ marginBottom: filtersCollapsed ? 8 : 14 }}>
-        <div>
-          <h1 className="pageTitle">Bảng động từ bất quy tắc</h1>
-          {!filtersCollapsed && (
-            <p className="pageSub">
-              Bấm vào bất kỳ ô V1 / V2 / V3 nào để nghe phát âm · bật chế độ che để tự kiểm tra.
-            </p>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={scope === 'top100'}
-              className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
-              onClick={() => {
-                setScope('top100');
-                setRevealed({});
-              }}
-            >
-              100 từ thông dụng
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={scope === 'all360'}
-              className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
-              onClick={() => {
-                setScope('all360');
-                setRevealed({});
-              }}
-            >
-              Đầy đủ {IRR_ALL.length} từ
-            </button>
-          </div>
-
+      <div className="libTopRow" style={{ marginBottom: filtersCollapsed ? 10 : 12 }}>
+        <div className="irrScopeTabs" role="tablist" aria-label="Chọn bộ động từ">
           <button
             type="button"
-            className="ghost small"
-            onClick={() => setFiltersCollapsed((v) => !v)}
+            role="tab"
+            aria-selected={scope === 'top100'}
+            className={`irrScopeBtn ${scope === 'top100' ? 'active' : ''}`}
+            onClick={() => {
+              setScope('top100');
+              setRevealed({});
+            }}
           >
-            {filtersCollapsed ? 'Hiện bộ lọc ▼' : 'Ẩn bộ lọc ▲'}
+            100 từ thông dụng
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'all360'}
+            className={`irrScopeBtn ${scope === 'all360' ? 'active' : ''}`}
+            onClick={() => {
+              setScope('all360');
+              setRevealed({});
+            }}
+          >
+            Đầy đủ {IRR_ALL.length} từ
           </button>
         </div>
+
+        <div className="searchFieldWrap" style={{ flex: 1, minWidth: 200 }}>
+          <IconSearch size={16} className="searchFieldIcon" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm V1, V2, V3 hoặc nghĩa..."
+          />
+        </div>
+
+        <button
+          type="button"
+          className="ghost small"
+          onClick={() => setFiltersCollapsed((v) => !v)}
+        >
+          {filtersCollapsed ? 'Hiện bộ lọc ▼' : 'Ẩn bộ lọc ▲'}
+        </button>
       </div>
 
       {!filtersCollapsed && (
         <>
-          <div className="libFilterRow">
-            <div className="searchFieldWrap" style={{ flex: 1, minWidth: 240 }}>
-              <IconSearch size={16} className="searchFieldIcon" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm theo V1, V2, V3 hoặc nghĩa tiếng Việt..."
-              />
-            </div>
-
+          <div className="catChips">
             <button
               type="button"
               className={`chip btnIconText ${hide ? 'active' : ''}`}
@@ -169,14 +158,10 @@ export default function IrregularView({ onSpeak }: Props) {
                 setHide((h) => !h);
                 setRevealed({});
               }}
-              style={{ padding: '10px 16px', fontSize: 14 }}
             >
-              <IconEyeOff size={16} />
-              <span>{hide ? 'Đang che V2 · V3 · Nghĩa' : 'Che V2 · V3 · Nghĩa để tự dò'}</span>
+              <IconEyeOff size={15} />
+              <span>{hide ? 'Đang che V2 · V3 · Nghĩa' : 'Che V2 · V3 · Nghĩa'}</span>
             </button>
-          </div>
-
-          <div className="catChips">
             {chips.map(([k, label, n]) => (
               <button
                 key={k}
