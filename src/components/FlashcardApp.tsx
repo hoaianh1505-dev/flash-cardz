@@ -441,6 +441,26 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
       return;
     }
 
+    const cacheKey = `flashcardx_cloud_cache_${username}_v1`;
+    let hadCachedCards = false;
+    try {
+      const rawCache = localStorage.getItem(cacheKey);
+      if (rawCache) {
+        const cached = JSON.parse(rawCache);
+        if (Array.isArray(cached.cards) && cached.cards.length > 0) {
+          setCards(cached.cards);
+          setShuffledIds(shuffleArray(cached.cards.map((c: CardItem) => c.id)));
+          hadCachedCards = true;
+        }
+        if (cached.daily) setDaily(cached.daily);
+        if (cached.dailyGoal) setDailyGoal(cached.dailyGoal);
+        if (Array.isArray(cached.sessions)) setSessions(cached.sessions);
+      }
+    } catch {
+      /* ignore corrupted cache */
+    }
+    if (hadCachedCards) setLoading(false);
+
     (async () => {
       try {
         const [cardsRes, sessRes] = await Promise.all([
@@ -452,24 +472,47 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
           return;
         }
         const data = await cardsRes.json();
-        if (Array.isArray(data.cards)) {
-          setCards(data.cards);
-          setShuffledIds(shuffleArray(data.cards.map((c: CardItem) => c.id)));
+        const freshCards: CardItem[] = Array.isArray(data.cards) ? data.cards : [];
+        if (freshCards.length) {
+          setCards(freshCards);
+          if (!hadCachedCards) {
+            setShuffledIds(shuffleArray(freshCards.map((c: CardItem) => c.id)));
+          }
         }
         if (data.daily) setDaily(data.daily);
         if (data.dailyGoal) setDailyGoal(data.dailyGoal);
 
+        let freshSessions: StudySessionItem[] | undefined;
         if (sessRes.ok) {
           const sData = await sessRes.json();
-          if (Array.isArray(sData.sessions)) setSessions(sData.sessions);
+          if (Array.isArray(sData.sessions)) {
+            freshSessions = sData.sessions;
+            setSessions(sData.sessions);
+          }
+        }
+
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              cards: freshCards,
+              daily: data.daily,
+              dailyGoal: data.dailyGoal,
+              sessions: freshSessions,
+            })
+          );
+        } catch {
+          /* ignore storage quota */
         }
       } catch {
-        showToast('Không thể tải dữ liệu từ máy chủ', 'error');
+        if (!hadCachedCards) {
+          showToast('Không thể tải dữ liệu từ máy chủ', 'error');
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [isGuest, showToast]);
+  }, [isGuest, username, showToast]);
 
   const stopSpeech = useCallback(() => {
     speakSeqRef.current++;
@@ -1670,17 +1713,6 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
 
   const goalPct = Math.min(100, Math.round((dailyDisplay.today / Math.max(1, dailyGoal)) * 100));
 
-  if (loading) {
-    return (
-      <div className="authWrap">
-        <div className="authCard" style={{ textAlign: 'center' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', margin: '0 0 8px' }}>Flashcard TOEIC</h1>
-          <p className="note">Đang tải bộ thẻ của {username}...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="appShell">
       {/* Mobile Sidebar Backdrop */}
@@ -1697,7 +1729,9 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
             </span>
             <div>
               <div className="topBrandName">Flashcard TOEIC</div>
-              <div className="topBrandSub">{isGuest ? 'Chế độ Khách' : 'Cloud Sync'}</div>
+              <div className="topBrandSub">
+                {isGuest ? 'Chế độ Khách' : loading ? 'Đang đồng bộ...' : 'Cloud Sync'}
+              </div>
             </div>
           </div>
           <button
