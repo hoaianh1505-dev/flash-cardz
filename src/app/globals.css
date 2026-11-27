@@ -4248,39 +4248,40 @@ kbd {
 
 /* Spacious & Pixel-Aligned Add / Edit Flashcard Modal */
 .box.editBox {
-  max-width: 600px;
-  padding: 32px 34px;
+  max-width: 660px;
+  padding: 34px 36px;
   border-radius: 22px;
 }
 
 .editModalTitle {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
 }
 
 .editModalSub {
-  margin: 6px 0 22px;
-  font-size: 14px;
+  margin: 8px 0 24px;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--ink-soft);
 }
 
 .editFormStack {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .editField {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .editField label {
   margin: 0;
-  font-size: 14px;
+  font-size: 16.5px;
   font-weight: 700;
   color: var(--ink);
 }
@@ -4292,20 +4293,27 @@ kbd {
   gap: 10px;
 }
 
+.editFieldHead button {
+  font-size: 15px;
+  padding: 8px 14px;
+}
+
 .editField input {
   width: 100%;
   margin: 0;
-  padding: 12px 15px;
-  border-radius: 11px;
+  padding: 14px 17px;
+  border-radius: 12px;
   background: var(--paper);
   border: 1.5px solid var(--line);
-  font-size: 15.5px;
+  font-size: 18.5px;
+  font-weight: 500;
+  color: var(--ink);
 }
 
 .meaningStack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .meaningRowFlat {
@@ -4321,16 +4329,17 @@ kbd {
 .editModalFooter {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 26px;
-  padding-top: 16px;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 18px;
   border-top: 1px solid var(--line-soft);
 }
 
 .editModalFooter button {
-  padding: 11px 22px;
-  font-size: 15px;
-  border-radius: 11px;
+  padding: 13px 26px;
+  font-size: 16.5px;
+  font-weight: 700;
+  border-radius: 12px;
 }
 
 /* Upgraded Larger & Cleaner Top-Right Toast */
