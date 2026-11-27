@@ -1,9 +1,31 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { capFirst, detectPOS, POS_LIST, PosKey } from '@/lib/pos';
 import type { CardItem, StudySessionItem } from './FlashcardApp';
 import { IconFlame, IconStar, IconVolume } from './Icons';
+
+function useCountUp(target: number, durationMs = 900): number {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setVal(target);
+      return;
+    }
+    let rafId = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+      setVal(Math.round(target * eased));
+      if (t < 1) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, durationMs]);
+  return val;
+}
 
 interface Props {
   cards: CardItem[];
@@ -77,6 +99,12 @@ export default function StatsDashboard({
     null
   );
   const [hardFilter, setHardFilter] = useState<'all' | 'starred' | 'wrong'>('all');
+  const [animReady, setAnimReady] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnimReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   // Core metrics
   const core = useMemo(() => {
@@ -274,11 +302,21 @@ export default function StatsDashboard({
     return core.hardAll.slice(0, 24);
   }, [core.hardAll, hardFilter]);
 
+  // Animated counters for Pro Max feel
+  const animToeic = useCountUp(core.estimatedToeic, 1050);
+  const animLearned = useCountUp(core.learned, 900);
+  const animPct = useCountUp(core.pct, 900);
+  const animAcc = useCountUp(core.avgAcc, 850);
+  const animToday = useCountUp(dailyToday, 750);
+
   // SVG Gauge Geometry
   const gaugePct = Math.min(1, core.estimatedToeic / 990);
   const gaugeRadius = 78;
   const gaugeArcLen = Math.PI * gaugeRadius;
-  const gaugeDashOffset = gaugeArcLen * (1 - gaugePct);
+  const gaugeDashOffset = animReady ? gaugeArcLen * (1 - gaugePct) : gaugeArcLen;
+  const tipAngle = Math.PI * (1 - (animReady ? gaugePct : 0));
+  const tipX = 100 + Math.cos(tipAngle) * gaugeRadius;
+  const tipY = 100 - Math.sin(tipAngle) * gaugeRadius;
 
   // SVG Donut Geometry
   const donutRadius = 62;
@@ -407,8 +445,20 @@ export default function StatsDashboard({
                 strokeDashoffset={gaugeDashOffset}
                 className="dashGaugeArc"
               />
+              {/* Animated Tip Indicator */}
+              {animReady && (
+                <circle
+                  cx={tipX}
+                  cy={tipY}
+                  r="6"
+                  fill="var(--card)"
+                  stroke="var(--teal)"
+                  strokeWidth="3"
+                  className="dashGaugeTip"
+                />
+              )}
               <text x="100" y="76" textAnchor="middle" className="dashGaugeScore">
-                {core.estimatedToeic}
+                {animToeic}
               </text>
               <text x="100" y="96" textAnchor="middle" className="dashGaugeSub">
                 / 990 ĐIỂM ƯỚC TÍNH
@@ -438,11 +488,11 @@ export default function StatsDashboard({
           <div className="dashKpiCard">
             <div className="dashKpiHead">
               <span className="kpiLabel">Tổng từ đã thuộc</span>
-              <span className="dashPill teal">{core.pct}%</span>
+              <span className="dashPill teal">{animPct}%</span>
             </div>
             <div className="dashKpiMain">
               <b className="kpiVal teal">
-                {core.learned}
+                {animLearned}
                 <small> / {core.total}</small>
               </b>
               <svg viewBox="0 0 44 44" className="dashRingSvg" aria-hidden="true">
@@ -456,8 +506,9 @@ export default function StatsDashboard({
                   strokeWidth="4.5"
                   strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 18}
-                  strokeDashoffset={2 * Math.PI * 18 * (1 - core.pct / 100)}
+                  strokeDashoffset={2 * Math.PI * 18 * (1 - (animReady ? core.pct / 100 : 0))}
                   transform="rotate(-90 22 22)"
+                  className="dashRingArc"
                 />
               </svg>
             </div>
@@ -473,11 +524,11 @@ export default function StatsDashboard({
               </span>
             </div>
             <b className="kpiVal">
-              {dailyToday}
+              {animToday}
               <small> / {dailyGoal} từ</small>
             </b>
             <div className="dashBarTrack">
-              <div className="dashBarFill gold" style={{ width: `${goalPct}%` }} />
+              <div className="dashBarFill gold" style={{ width: `${animReady ? goalPct : 0}%` }} />
             </div>
             <div className="goalPickRow">
               {([10, 20, 30, 50] as const).map((g) => (
@@ -503,7 +554,7 @@ export default function StatsDashboard({
                 </span>
               )}
             </div>
-            <b className="kpiVal">{sessions.length ? `${core.avgAcc}%` : '—'}</b>
+            <b className="kpiVal">{sessions.length ? `${animAcc}%` : '—'}</b>
             <span className="kpiSub">
               {sessions.length
                 ? `${sessions.length} phiên · ${core.totalQuestions} câu đã luyện`
@@ -588,6 +639,7 @@ export default function StatsDashboard({
           <div className="dashAreaChartBox">
             {trendPoints.length >= 1 ? (
               <svg
+                key={trendFilter}
                 viewBox={`0 0 ${chartW} ${chartH}`}
                 className="dashSvgChart"
                 role="img"
@@ -595,7 +647,7 @@ export default function StatsDashboard({
               >
                 <defs>
                   <linearGradient id="accAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--teal)" stopOpacity="0.32" />
+                    <stop offset="0%" stopColor="var(--teal)" stopOpacity="0.34" />
                     <stop offset="100%" stopColor="var(--teal)" stopOpacity="0.02" />
                   </linearGradient>
                 </defs>
@@ -623,8 +675,10 @@ export default function StatsDashboard({
                   );
                 })}
 
-                {/* Area Fill + Smooth Line */}
-                {trendAreaPath && <path d={trendAreaPath} fill="url(#accAreaGrad)" />}
+                {/* Area Fill + Animated Draw-In Line */}
+                {trendAreaPath && (
+                  <path d={trendAreaPath} fill="url(#accAreaGrad)" className="dashAreaReveal" />
+                )}
                 {trendPath && (
                   <path
                     d={trendPath}
@@ -632,23 +686,41 @@ export default function StatsDashboard({
                     stroke="var(--teal)"
                     strokeWidth="2.8"
                     strokeLinecap="round"
+                    pathLength={100}
+                    className="dashLineDraw"
                   />
                 )}
 
                 {/* Interactive Data Nodes */}
                 {trendPoints.map((pt) => {
+                  const isLatest = pt.idx === trendPoints.length - 1;
                   const isActive =
                     hoveredSessionIdx === pt.idx ||
-                    (hoveredSessionIdx === null && pt.idx === trendPoints.length - 1);
+                    (hoveredSessionIdx === null && isLatest);
                   return (
                     <g
                       key={pt.session.id}
-                      style={{ cursor: 'pointer' }}
+                      style={{
+                        cursor: 'pointer',
+                        animationDelay: `${180 + pt.idx * 45}ms`,
+                      }}
+                      className="dashNodePop"
                       onMouseEnter={() => setHoveredSessionIdx(pt.idx)}
                       onClick={() => setHoveredSessionIdx(pt.idx)}
                       onFocus={() => setHoveredSessionIdx(pt.idx)}
                     >
                       <circle cx={pt.x} cy={pt.y} r="12" fill="transparent" />
+                      {isLatest && (
+                        <circle
+                          cx={pt.x}
+                          cy={pt.y}
+                          r="9"
+                          fill="none"
+                          stroke="var(--teal)"
+                          strokeWidth="2"
+                          className="dashNodePulse"
+                        />
+                      )}
                       <circle
                         cx={pt.x}
                         cy={pt.y}
@@ -692,7 +764,7 @@ export default function StatsDashboard({
                   stroke="var(--line)"
                   strokeWidth="18"
                 />
-                {donutSegments.map((seg) => {
+                {donutSegments.map((seg, idx) => {
                   const isDim = hoveredPos !== null && hoveredPos !== seg.key;
                   return (
                     <circle
@@ -703,11 +775,18 @@ export default function StatsDashboard({
                       fill="none"
                       stroke={seg.color}
                       strokeWidth={hoveredPos === seg.key ? '22' : '18'}
-                      strokeDasharray={`${Math.max(0, seg.len - 1.5)} ${donutCircumference}`}
+                      strokeDasharray={
+                        animReady
+                          ? `${Math.max(0, seg.len - 1.5)} ${donutCircumference}`
+                          : `0 ${donutCircumference}`
+                      }
                       strokeDashoffset={-seg.offset}
                       transform="rotate(-90 82 82)"
                       opacity={isDim ? 0.35 : 1}
-                      style={{ transition: 'stroke-width 0.16s, opacity 0.16s', cursor: 'pointer' }}
+                      style={{
+                        transition: `stroke-dasharray 0.85s cubic-bezier(0.22, 1, 0.36, 1) ${idx * 75}ms, stroke-width 0.16s, opacity 0.16s`,
+                        cursor: 'pointer',
+                      }}
                       onMouseEnter={() => setHoveredPos(seg.key)}
                       onMouseLeave={() => setHoveredPos(null)}
                     />
@@ -723,7 +802,7 @@ export default function StatsDashboard({
             </div>
 
             <div className="dashPosBars">
-              {posStats.slice(0, 6).map((item) => (
+              {posStats.slice(0, 6).map((item, idx) => (
                 <div
                   key={item.key}
                   className={`dashPosRow ${hoveredPos === item.key ? 'active' : ''}`}
@@ -742,7 +821,11 @@ export default function StatsDashboard({
                   <div className="dashPosTrack">
                     <div
                       className="dashPosFill"
-                      style={{ width: `${item.pct}%`, background: item.color }}
+                      style={{
+                        width: `${animReady ? item.pct : 0}%`,
+                        background: item.color,
+                        transitionDelay: `${idx * 70}ms`,
+                      }}
                     />
                   </div>
                 </div>
@@ -778,7 +861,11 @@ export default function StatsDashboard({
             </div>
             <div className="dashHeatGrid" role="grid" aria-label="Bản đồ nhiệt 12 tuần">
               {heatmap.weeks.map((week, wi) => (
-                <div key={wi} className="dashHeatCol">
+                <div
+                  key={wi}
+                  className="dashHeatCol dashHeatWave"
+                  style={{ animationDelay: `${wi * 38}ms` }}
+                >
                   {week.map((cell) => (
                     <button
                       key={cell.date}
@@ -864,31 +951,33 @@ export default function StatsDashboard({
                 );
               })}
 
-              {/* Data Polygon */}
-              <polygon
-                points={radarPolygon}
-                fill="var(--teal)"
-                fillOpacity="0.22"
-                stroke="var(--teal)"
-                strokeWidth="2.4"
-                strokeLinejoin="round"
-              />
+              {/* Data Polygon — Expands smoothly from center */}
+              <g className={`dashRadarData ${animReady ? 'ready' : ''}`}>
+                <polygon
+                  points={radarPolygon}
+                  fill="var(--teal)"
+                  fillOpacity="0.24"
+                  stroke="var(--teal)"
+                  strokeWidth="2.4"
+                  strokeLinejoin="round"
+                />
 
-              {/* Vertex Dots */}
-              {radarMetrics.map((m, i) => {
-                const p = radarPoint(i, m.value);
-                return (
-                  <circle
-                    key={m.label}
-                    cx={p.x}
-                    cy={p.y}
-                    r="4"
-                    fill="var(--teal)"
-                    stroke="var(--card)"
-                    strokeWidth="1.8"
-                  />
-                );
-              })}
+                {/* Vertex Dots */}
+                {radarMetrics.map((m, i) => {
+                  const p = radarPoint(i, m.value);
+                  return (
+                    <circle
+                      key={m.label}
+                      cx={p.x}
+                      cy={p.y}
+                      r="4.2"
+                      fill="var(--teal)"
+                      stroke="var(--card)"
+                      strokeWidth="1.8"
+                    />
+                  );
+                })}
+              </g>
             </svg>
 
             <div className="dashRadarLegend">
