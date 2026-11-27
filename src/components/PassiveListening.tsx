@@ -51,7 +51,7 @@ export default function PassiveListening({
   const [readMeaning, setReadMeaning] = useState(true);
   const [sleepMinutes, setSleepMinutes] = useState<0 | 5 | 10 | 15 | 30>(0);
   const [sleepLeftSec, setSleepLeftSec] = useState<number>(0);
-  const [settingsCollapsed, setSettingsCollapsed] = useState(false);
+  const [settingsCollapsed, setSettingsCollapsed] = useState(true);
 
   const [queue, setQueue] = useState<CardItem[]>([]);
   const [idx, setIdx] = useState(0);
@@ -405,13 +405,22 @@ export default function PassiveListening({
             </div>
           </div>
 
-          <button
-            type="button"
-            className="ghost small"
-            onClick={() => setSettingsCollapsed((v) => !v)}
-          >
-            {settingsCollapsed ? 'Hiện tùy chỉnh ▼' : 'Ẩn tùy chỉnh ▲'}
-          </button>
+          <div className="passiveConfigActions">
+            {settingsCollapsed && (
+              <span className="passiveSummaryPill">
+                {repeatCount}x · {gapSec}s · {slowMode ? 'Chậm' : 'Thường'}
+                {readMeaning ? ' · Có nghĩa Việt' : ''}
+                {sleepMinutes > 0 ? ` · ${sleepMinutes}p` : ''}
+              </span>
+            )}
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => setSettingsCollapsed((v) => !v)}
+            >
+              {settingsCollapsed ? 'Tùy chỉnh ▼' : 'Ẩn tùy chỉnh ▲'}
+            </button>
+          </div>
         </div>
 
         {!settingsCollapsed && (
