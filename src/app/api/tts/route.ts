@@ -12,6 +12,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const raw = sanitizeText(searchParams.get('q') || '', 160);
     const slow = searchParams.get('slow') === '1';
+    const langParam = searchParams.get('lang');
+    const lang = langParam === 'vi' ? 'vi' : 'en';
 
     if (!raw) {
       return NextResponse.json({ error: 'Invalid query' }, { status: 400 });
@@ -20,7 +22,7 @@ export async function GET(req: Request) {
     const ttsUrl = new URL('https://translate.google.com/translate_tts');
     ttsUrl.searchParams.set('ie', 'UTF-8');
     ttsUrl.searchParams.set('client', 'tw-ob');
-    ttsUrl.searchParams.set('tl', 'en');
+    ttsUrl.searchParams.set('tl', lang);
     ttsUrl.searchParams.set('q', raw);
     if (slow) ttsUrl.searchParams.set('ttsspeed', '0.24');
 

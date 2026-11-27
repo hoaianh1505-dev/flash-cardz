@@ -6,6 +6,7 @@ import { capFirst, detectPOS, keyOf, POS_LIST, POS_SHORT, PosKey } from '@/lib/p
 import DictationPractice from './DictationPractice';
 import IrregularView from './IrregularView';
 import MatchPairsGame from './MatchPairsGame';
+import PassiveListening from './PassiveListening';
 import PlaneShooterGame from './PlaneShooterGame';
 import PronunciationPractice from './PronunciationPractice';
 import SpeedBlitzGame from './SpeedBlitzGame';
@@ -114,7 +115,7 @@ type MainTab =
   | 'irregular'
   | 'wordform'
   | 'stats';
-type PracticeSubTab = 'dictation' | 'quiz';
+type PracticeSubTab = 'dictation' | 'quiz' | 'passive';
 type GameSubTab = 'plane-shooter' | 'match-pairs' | 'word-scramble' | 'speed-blitz';
 
 const GUEST_CARDS_KEY = 'flashcardx_guest_cards_v1';
@@ -363,7 +364,11 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
         ) {
           setActiveTab(p.activeTab);
         }
-        if (p.practiceMode === 'dictation' || p.practiceMode === 'quiz') {
+        if (
+          p.practiceMode === 'dictation' ||
+          p.practiceMode === 'quiz' ||
+          p.practiceMode === 'passive'
+        ) {
           setPracticeMode(p.practiceMode);
         }
         if (
@@ -2291,6 +2296,22 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                       <span>Chọn nhanh 4 đáp án (phím 1–4)</span>
                     </div>
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={practiceMode === 'passive'}
+                    className={`practiceModeBtn ${practiceMode === 'passive' ? 'active' : ''}`}
+                    onClick={() => {
+                      stopSpeech();
+                      setPracticeMode('passive');
+                    }}
+                  >
+                    <IconVolume size={18} />
+                    <div>
+                      <b>Nghe thụ động</b>
+                      <span>Tự động đọc lặp rảnh tay · Hẹn giờ</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
@@ -2302,6 +2323,16 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
                   onMarkLearned={setCardLearnedById}
                   onMarkManyUnlearned={markManyUnlearned}
                   onSessionComplete={recordPracticeSession}
+                />
+              ) : practiceMode === 'passive' ? (
+                <PassiveListening
+                  cards={cards}
+                  onMarkLearned={setCardLearnedById}
+                  onToggleStar={(id) => {
+                    const found = cards.find((c) => c.id === id);
+                    if (found) toggleStarById(found);
+                  }}
+                  onToast={showToast}
                 />
               ) : (
                 <div className="dictWrap">
