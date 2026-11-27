@@ -9,6 +9,7 @@ import MatchPairsGame from './MatchPairsGame';
 import PlaneShooterGame from './PlaneShooterGame';
 import PronunciationPractice from './PronunciationPractice';
 import SpeedBlitzGame from './SpeedBlitzGame';
+import StatsDashboard from './StatsDashboard';
 import Toast, { ToastType } from './Toast';
 import WordFormGuide from './WordFormGuide';
 import WordScrambleGame from './WordScrambleGame';
@@ -2951,140 +2952,18 @@ export default function FlashcardApp({ username, isGuest = false, onRequestAuth 
 
           {/* ==================== TAB 5: THỐNG KÊ & TIẾN ĐỘ ==================== */}
           {activeTab === 'stats' && (
-            <div className="innerPageWrap statsPageGrid">
-              {/* Top 4 KPI Cards */}
-              <div className="kpiGrid">
-                <div className="kpiCard">
-                  <span className="kpiLabel">Tổng đã thuộc</span>
-                  <b className="kpiVal teal">
-                    {stats.learned} / {stats.total}
-                  </b>
-                  <span className="kpiSub">Hoàn thành {stats.pct}% bộ từ</span>
-                </div>
-                <div className="kpiCard">
-                  <span className="kpiLabel">Mục tiêu hôm nay</span>
-                  <b className="kpiVal">
-                    {dailyDisplay.today} / {dailyGoal}
-                  </b>
-                  <div className="goalPickRow">
-                    {([10, 20, 30, 50] as const).map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        className={`goalChip ${dailyGoal === g ? 'active' : ''}`}
-                        onClick={() => updateDailyGoal(g)}
-                      >
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="kpiCard">
-                  <span className="kpiLabel">Từ gắn sao / hay sai</span>
-                  <b className="kpiVal gold">{analytics.hardCards.length}</b>
-                  <span className="kpiSub">{stats.starred} từ đã gắn sao ưu tiên</span>
-                </div>
-                <div className="kpiCard">
-                  <span className="kpiLabel">Độ chính xác luyện tập</span>
-                  <b className="kpiVal">{sessions.length ? `${analytics.avgAccuracy}%` : '—'}</b>
-                  <span className="kpiSub">{sessions.length} phiên gần đây</span>
-                </div>
-              </div>
-
-              <div className="statsTwoCol">
-                {/* Hard / Starred Words */}
-                <section className="pagePanel">
-                  <div className="pagePanelHead" style={{ marginBottom: 12 }}>
-                    <div>
-                      <h2 className="pageTitle" style={{ fontSize: 20 }}>
-                        Từ cần chú ý (Gắn sao &amp; Hay sai)
-                      </h2>
-                      <p className="pageSub">Ưu tiên ôn lại các từ bạn gắn sao hoặc hay gõ nhầm.</p>
-                    </div>
-                  </div>
-                  {analytics.hardCards.length === 0 ? (
-                    <div className="empty">
-                      Chưa có từ khó nào. Bấm biểu tượng ngôi sao trên thẻ hoặc luyện tập để hệ
-                      thống tự ghi nhận.
-                    </div>
-                  ) : (
-                    <div className="statsList">
-                      {analytics.hardCards.map((c) => (
-                        <div key={c.id} className="dictMissedRow">
-                          <div style={{ cursor: 'pointer' }} onClick={() => jumpToCard(c.id)}>
-                            <b>
-                              {capFirst(c.word)}{' '}
-                              {(c.wrongCount || 0) > 0 && (
-                                <small className="wrongPill">Sai {c.wrongCount} lần</small>
-                              )}
-                            </b>
-                            <span>{c.meanings.map((m) => capFirst(m.text)).join('; ')}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="spkBig"
-                            onClick={() => speak(c.word, false)}
-                          >
-                            <IconVolume size={15} />
-                            <span>Nghe</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                {/* Recent Practice Sessions (StudySession model) */}
-                <section className="pagePanel">
-                  <div className="pagePanelHead" style={{ marginBottom: 12 }}>
-                    <div>
-                      <h2 className="pageTitle" style={{ fontSize: 20 }}>
-                        Lịch sử luyện tập
-                      </h2>
-                      <p className="pageSub">
-                        Lưu tự động sau mỗi lượt Nghe chép chính tả hoặc Trắc nghiệm.
-                      </p>
-                    </div>
-                  </div>
-                  {sessions.length === 0 ? (
-                    <div className="empty">
-                      Chưa có phiên luyện tập nào. Hãy sang mục Luyện tập để bắt đầu lượt đầu tiên!
-                    </div>
-                  ) : (
-                    <div className="statsList">
-                      {sessions.map((s) => (
-                        <div key={s.id} className="sessionRow">
-                          <div>
-                            <div className="sessionModeRow">
-                              <span className={`sessionTag ${s.mode}`}>
-                                {s.mode === 'dictation'
-                                  ? 'Nghe chép chính tả'
-                                  : s.mode === 'speaking'
-                                    ? 'Luyện phát âm'
-                                    : 'Trắc nghiệm'}
-                              </span>
-                              <span className="sessionDate">
-                                {new Date(s.createdAt).toLocaleString('vi-VN', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                            <div className="sessionMeta">
-                              Đúng <b>{s.score}/{s.total}</b> câu · {s.durationSec}s
-                            </div>
-                          </div>
-                          <div className={`sessionAcc ${s.accuracy >= 80 ? 'ok' : ''}`}>
-                            {s.accuracy}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
+            <div className="innerPageWrap">
+              <StatsDashboard
+                cards={cards}
+                sessions={sessions}
+                dailyToday={dailyDisplay.today}
+                streak={dailyDisplay.streak}
+                dailyGoal={dailyGoal}
+                onUpdateDailyGoal={updateDailyGoal}
+                onJumpToCard={jumpToCard}
+                onSpeak={speak}
+                onGoPractice={() => switchTab('practice')}
+              />
             </div>
           )}
         </main>
