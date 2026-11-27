@@ -645,6 +645,7 @@ export default function StatsDashboard({
                       key={pt.session.id}
                       style={{ cursor: 'pointer' }}
                       onMouseEnter={() => setHoveredSessionIdx(pt.idx)}
+                      onClick={() => setHoveredSessionIdx(pt.idx)}
                       onFocus={() => setHoveredSessionIdx(pt.idx)}
                     >
                       <circle cx={pt.x} cy={pt.y} r="12" fill="transparent" />
@@ -787,6 +788,7 @@ export default function StatsDashboard({
                       title={`${cell.label}: ${cell.count} hoạt động`}
                       onMouseEnter={() => setHoveredDay(cell)}
                       onMouseLeave={() => setHoveredDay(null)}
+                      onClick={() => setHoveredDay(cell)}
                       aria-label={`${cell.label}: ${cell.count} hoạt động`}
                     />
                   ))}

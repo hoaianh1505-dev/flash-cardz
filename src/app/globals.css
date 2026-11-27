@@ -7937,9 +7937,97 @@ body {
 }
 
 @media (max-width: 640px) {
+  .dashRoot {
+    gap: 12px;
+  }
+
+  .dashTopRow,
+  .dashChartGrid,
   .dashKpiGrid,
   .dashDonutLayout,
   .dashRadarLayout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .dashHeroCard,
+  .dashPanel,
+  .dashKpiCard {
+    padding: 14px;
+    min-width: 0;
+  }
+
+  .dashKpiCard .kpiVal {
+    font-size: 24px;
+  }
+
+  .dashPanelHead {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .dashPanelHead .segGroup {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .dashPanelHead .segBtn {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+
+  .dashChartReadout {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .dashReadoutDate {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .dashDonutSvg {
+    width: 144px;
+    height: 144px;
+  }
+
+  .dashHeatmapWrap {
+    gap: 6px;
+  }
+
+  .dashHeatDays {
+    height: 98px;
+    font-size: 10px;
+  }
+
+  .dashHeatGrid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .dashHeatCol {
+    gap: 3px;
+  }
+
+  .dashHeatCell {
+    min-width: 0;
+    border-radius: 3px;
+  }
+
+  .dashRadarSvg {
+    max-width: 225px;
+  }
+
+  .dashRadarLegend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .dashRadarRow {
+    font-size: 12px;
+    padding: 6px 8px;
   }
 }
